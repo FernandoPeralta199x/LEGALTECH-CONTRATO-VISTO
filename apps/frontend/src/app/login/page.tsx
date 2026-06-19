@@ -50,6 +50,7 @@ function LoginContent() {
   // Register state
   const [name, setName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
+  const [registerRole, setRegisterRole] = useState<DevRole>("analyst");
   const [registerPassword, setRegisterPassword] = useState("");
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [verificationToken, setVerificationToken] = useState("");
@@ -120,7 +121,7 @@ function LoginContent() {
         email: registerEmail,
         name,
         password: registerPassword,
-        role: "client"
+        role: registerRole
       });
 
       setRegisteredEmail(result.email);
@@ -376,6 +377,19 @@ function LoginContent() {
                 type="email"
                 value={registerEmail}
               />
+            </Field>
+
+            <Field label="Função" icon={<User size={15} />}>
+              <select
+                className={inputClass}
+                onChange={(event) => setRegisterRole(event.target.value as DevRole)}
+                required
+                value={registerRole}
+              >
+                <option value="analyst">Analista</option>
+                <option value="manager">Gerenciador</option>
+                <option value="admin">Administrador</option>
+              </select>
             </Field>
 
             <Field label="Senha" icon={<Lock size={15} />}>

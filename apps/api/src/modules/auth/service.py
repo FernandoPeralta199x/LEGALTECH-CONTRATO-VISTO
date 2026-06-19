@@ -10,6 +10,7 @@ from src.core.config import Settings, get_settings
 from src.modules.admin.dev_jwt import create_dev_jwt
 from src.modules.auth.repository import UserRepository
 from src.modules.common.exceptions import ResourceNotFoundError
+from src.modules.roles.permissions import BASE_ROLES
 
 if TYPE_CHECKING:
     from src.models.user import User
@@ -35,6 +36,10 @@ class EmailNotVerifiedError(AuthServiceError):
 
 
 class InvalidVerificationTokenError(AuthServiceError):
+    pass
+
+
+class InvalidRoleError(AuthServiceError):
     pass
 
 
@@ -93,6 +98,9 @@ class AuthService:
         password: str,
         role: str = "client",
     ) -> dict:
+        if role not in BASE_ROLES:
+            raise InvalidRoleError(f"Papel '{role}' não é permitido para cadastro.")
+
         existing = self._repository.get_by_email(email)
         if existing:
             raise EmailAlreadyRegisteredError("Este e-mail já está cadastrado.")
