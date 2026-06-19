@@ -7,6 +7,7 @@ export type ValidationResult = {
 
 export type PasswordRequirementState = {
   hasLowercase: boolean;
+  hasMaxLength: boolean;
   hasMinLength: boolean;
   hasSpecial: boolean;
   hasUppercase: boolean;
@@ -321,6 +322,7 @@ export function validateDevJwtForm(token: string): ValidationResult {
 export function getPasswordRequirements(password: string): PasswordRequirementState {
   return {
     hasLowercase: /[a-z]/.test(password),
+    hasMaxLength: password.length <= 16,
     hasMinLength: password.length >= 8,
     hasSpecial: /[^A-Za-z0-9]/.test(password),
     hasUppercase: /[A-Z]/.test(password)
@@ -345,6 +347,8 @@ export function validatePasswordChange(input: {
 
   if (!newPassword) {
     errors.newPassword = "Informe a nova senha.";
+  } else if (newPassword.length < 8 || newPassword.length > 16) {
+    errors.newPassword = "A senha deve ter entre 8 e 16 caracteres.";
   } else if (!meetsAllRequirements) {
     errors.newPassword = "A senha deve atender todos os requisitos.";
   }

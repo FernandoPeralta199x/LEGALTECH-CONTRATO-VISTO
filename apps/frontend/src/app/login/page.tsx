@@ -491,6 +491,7 @@ function Field({
 
 const passwordRequirements = [
   ["hasMinLength", "Mínimo de 8 caracteres"],
+  ["hasMaxLength", "Máximo de 16 caracteres"],
   ["hasLowercase", "Pelo menos 1 letra minúscula"],
   ["hasUppercase", "Pelo menos 1 letra maiúscula"],
   ["hasSpecial", "Pelo menos 1 caractere especial"]
