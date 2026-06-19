@@ -164,7 +164,7 @@ export async function listClients(): Promise<ServiceResult<Client[]>> {
   try {
     const response = await apiClient.get<BackendClient[]>("/api/v1/clients");
     return {
-      data: response.success ? response.data.map(mapBackendClient) : [],
+      data: response.data.map(mapBackendClient),
       source: "api"
     };
   } catch (error) {

@@ -1,4 +1,3 @@
-import { mockParties } from "../../lib/mockData";
 import type { CaseParty, CasePartyCreate, CasePartyUpdate } from "../../types";
 import { apiClient } from "./apiClient";
 import { fallbackReason, shouldUseMockFallback, type ServiceResult } from "./fallback";
@@ -97,7 +96,7 @@ export async function listCaseParties(
     }
 
     return {
-      data: mockParties.filter((party) => party.caseId === caseId),
+      data: [],
       fallbackReason: fallbackReason(error),
       source: "mock"
     };
@@ -151,13 +150,10 @@ export async function updateCaseParty(
       throw error;
     }
 
-    const current =
-      mockParties.find((party) => party.caseId === caseId && party.id === partyId) ??
-      mockParties.find((party) => party.caseId === caseId) ??
-      makeMockCaseParty(caseId, {
-        name: safePayload.name ?? "Parte local",
-        party_type: safePayload.party_type ?? "outro"
-      });
+    const current = makeMockCaseParty(caseId, {
+      name: safePayload.name ?? "Parte local",
+      party_type: safePayload.party_type ?? "outro"
+    });
 
     return {
       data: {

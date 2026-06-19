@@ -170,7 +170,7 @@ export function buildClientCreatePayload(form: ClientFormState): ClientCreate {
       name: legalName,
       person_type: "company",
       phone,
-      source_mode: "mock",
+      source_mode: "local",
       trade_name: tradeName
     };
   }
@@ -199,7 +199,7 @@ export function buildClientCreatePayload(form: ClientFormState): ClientCreate {
     person_type: "individual",
     phone,
     rg,
-    source_mode: "mock"
+    source_mode: "local"
   };
 }
 

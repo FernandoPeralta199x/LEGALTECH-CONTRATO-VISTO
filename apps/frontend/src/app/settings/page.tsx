@@ -26,7 +26,6 @@ import { Card } from "@/components/Card";
 import { Notification } from "@/components/Notification";
 import { PageTitle } from "@/components/PageTitle";
 import { cn } from "@/lib/cn";
-import { mockOrganizations, mockUsers } from "@/lib/mockData";
 import { useDevSession } from "@/src/lib/useDevSession";
 import {
   applyThemePreference,
@@ -42,10 +41,10 @@ import {
 import { validatePasswordChange } from "@/src/lib/validation";
 
 const TABS = [
-  { id: "org", label: "Configuração local", icon: Building2 },
-  { id: "members", label: "Equipe demo", icon: Users },
-  { id: "security", label: "Segurança local", icon: Shield },
-  { id: "notifications", label: "Preferências locais", icon: Bell },
+  { id: "org", label: "Organização", icon: Building2 },
+  { id: "members", label: "Equipe", icon: Users },
+  { id: "security", label: "Segurança", icon: Shield },
+  { id: "notifications", label: "Notificações", icon: Bell },
   { id: "appearance", label: "Aparência", icon: Palette }
 ] as const;
 
@@ -63,29 +62,29 @@ const notificationItems: Array<{
   label: string;
 }> = [
   {
-    desc: "Quando um registro local de caso é indicado no MVP.",
+    desc: "Quando um novo caso é registrado.",
     key: "new_case_created",
-    label: "Registro local de caso"
+    label: "Novo caso"
   },
   {
-    desc: "Quando a análise demonstrativa local é marcada no roteiro.",
+    desc: "Quando a análise é concluída.",
     key: "analysis_completed",
-    label: "Análise demonstrativa"
+    label: "Análise concluída"
   },
   {
-    desc: "Quando um resumo demonstrativo fica em revisão local planejada.",
+    desc: "Quando um relatório entra em revisão.",
     key: "review_pending",
-    label: "Revisão local planejada"
+    label: "Revisão pendente"
   },
   {
-    desc: "Quando um relatório demonstrativo recebe validação local.",
+    desc: "Quando um relatório é aprovado.",
     key: "report_approved",
-    label: "Validação local de relatório"
+    label: "Relatório aprovado"
   },
   {
-    desc: "Quando um módulo planejado exige atenção operacional local.",
+    desc: "Quando um módulo precisa de atenção.",
     key: "agent_failed",
-    label: "Atenção em módulo local"
+    label: "Falha em módulo"
   }
 ];
 
@@ -111,7 +110,6 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
 
-  const org = mockOrganizations[0];
   const passwordValidation = validatePasswordChange(passwordForm);
 
   useEffect(() => {
@@ -123,7 +121,9 @@ export default function SettingsPage() {
       ? formatUserNameFromEmail(session.email)
       : "Usuário local";
     const currentEmail = session?.email ?? "dev.local@example.test";
-    const currentRole = session ? roleLabels[session.role] ?? session.role : "Perfil local";
+    const currentRole = session
+      ? roleLabels[session.role] ?? session.role
+      : "Perfil local";
     const currentTime = session?.issuedAt
       ? new Intl.DateTimeFormat("pt-BR", {
           dateStyle: "short",
@@ -140,22 +140,13 @@ export default function SettingsPage() {
         location: "Local não informado",
         name: currentName,
         role: currentRole
-      },
-      {
-        current: false,
-        device: "Ambiente de homologação — navegador fictício",
-        email: "analista.local@example.test",
-        lastSeen: "Acesso demonstrativo",
-        location: "Local não informado",
-        name: "Usuário local",
-        role: "Analista"
       }
     ];
   }, [session]);
 
   function handleSave() {
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    window.setTimeout(() => setSaved(false), 2000);
   }
 
   function handleThemeChange(nextTheme: ThemePreference) {
@@ -211,7 +202,7 @@ export default function SettingsPage() {
     <AuthGuard>
       <AppLayout>
         <PageTitle
-          description="Ajuste configurações locais e demonstrativas de organização, segurança, canais planejados e aparência."
+          description="Ajuste configurações locais de organização, segurança, notificações e aparência. Configurações reais de tenant, equipe e billing dependem de backend integrado."
           eyebrow="Configurações"
           title="Configurações"
         />
@@ -243,16 +234,20 @@ export default function SettingsPage() {
 
           <div className="min-w-0 flex-1">
             {activeTab === "org" && (
-              <Card title="Dados locais da organização">
+              <Card title="Dados da organização">
                 <div className="max-w-lg space-y-4">
-                  <Field label="Nome local da organização">
-                    <input className={inputClass} defaultValue={org.name} type="text" />
+                  <Field label="Nome da organização">
+                    <input
+                      className={inputClass}
+                      defaultValue="Organização MVP"
+                      type="text"
+                    />
                   </Field>
                   <Field label="CNPJ">
                     <input
                       className={`${inputClass} cursor-not-allowed opacity-60`}
                       disabled
-                      value={org.cnpj}
+                      value="00.000.000/0000-00"
                     />
                   </Field>
                   <Field label="Plano">
@@ -260,7 +255,7 @@ export default function SettingsPage() {
                       <input
                         className={`${inputClass} flex-1 cursor-not-allowed opacity-60`}
                         disabled
-                        value={org.plan.charAt(0).toUpperCase() + org.plan.slice(1)}
+                        value="MVP Local"
                       />
                       <Button type="button" variant="secondary">
                         Upgrade em roadmap
@@ -281,31 +276,13 @@ export default function SettingsPage() {
 
             {activeTab === "members" && (
               <Card
-                description="Visualize referências de equipe do MVP local. Convites reais e permissões ficam no roadmap."
-                title="Equipe demonstrativa"
+                description="Gerenciamento real de equipe, convites e permissões ficam no roadmap."
+                title="Equipe"
               >
-                <div className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {mockUsers.map((user) => (
-                    <div className="flex items-center gap-4 py-4" key={user.id}>
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-brand text-xs font-bold text-white">
-                        {user.avatarInitials}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                          {user.name}
-                        </p>
-                        <p className="truncate text-[11px] text-slate-600 dark:text-slate-400">
-                          {user.email}
-                        </p>
-                      </div>
-                      <select className={selectClass}>
-                        <option value="admin">Admin</option>
-                        <option value="analyst">Analista</option>
-                        <option value="client">Cliente</option>
-                        <option value="viewer">Viewer</option>
-                      </select>
-                    </div>
-                  ))}
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--surf2)] p-6 text-center">
+                  <p className="text-sm text-[var(--text2)]">
+                    Nenhum membro administrável nesta tela.
+                  </p>
                 </div>
                 <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-800">
                   <Button icon={<User size={13} />} type="button" variant="secondary">
@@ -319,7 +296,7 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <Card
                   description="Validação local para desenvolvimento. Não aciona Cognito nem endpoint real."
-                  title="Segurança local da conta"
+                  title="Segurança da conta"
                 >
                   {passwordError && (
                     <Notification tone="error" title="Senha local não validada">
@@ -361,36 +338,6 @@ export default function SettingsPage() {
                         value={passwordForm.newPassword}
                       />
                     </Field>
-
-                    <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
-                      {requirementLabels.map(([key, label]) => {
-                        const met = passwordValidation.requirements[key];
-                        return (
-                          <div
-                            className={cn(
-                              "flex items-center gap-2 text-[11px]",
-                              met
-                                ? "text-emerald-700 dark:text-emerald-300"
-                                : "text-slate-500 dark:text-slate-400"
-                            )}
-                            key={key}
-                          >
-                            <span
-                              className={cn(
-                                "flex h-4 w-4 items-center justify-center rounded-full border",
-                                met
-                                  ? "border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950"
-                                  : "border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900"
-                              )}
-                            >
-                              {met && <Check size={10} />}
-                            </span>
-                            {label}
-                          </div>
-                        );
-                      })}
-                    </div>
-
                     <Field label="Confirmar nova senha">
                       <input
                         className={inputClass}
@@ -405,48 +352,71 @@ export default function SettingsPage() {
                         value={passwordForm.confirmPassword}
                       />
                     </Field>
-                    <Button icon={<Lock size={14} />} type="submit">
-                      Validar senha local
+
+                    <div className="space-y-1.5">
+                      {requirementLabels.map(([key, label]) => {
+                        const met =
+                        passwordValidation.requirements[
+                          key as keyof typeof passwordValidation.requirements
+                        ];
+                        return (
+                          <div className="flex items-center gap-2 text-xs" key={key}>
+                            <span
+                              className={cn(
+                                "flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold",
+                                met
+                                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
+                                  : "border-slate-300 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-900"
+                              )}
+                            >
+                              {met ? <Check size={10} /> : "·"}
+                            </span>
+                            <span
+                              className={cn(
+                                met
+                                  ? "text-emerald-700 dark:text-emerald-300"
+                                  : "text-slate-600 dark:text-slate-400"
+                              )}
+                            >
+                              {label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <Button type="submit" variant="primary">
+                      Validar alteração local
                     </Button>
                   </form>
                 </Card>
 
                 <Card
-                  description="Dispositivos demonstrativos com acesso à sessão local. Tokens não são exibidos."
-                  title="Sessões demonstrativas"
+                  description="Sessões ativas reconhecidas localmente."
+                  title="Sessões ativas"
                 >
                   <div className="divide-y divide-slate-200 dark:divide-slate-800">
-                    {sessions.map((activeSession) => (
-                      <div
-                        className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between"
-                        key={`${activeSession.email}-${activeSession.device}`}
-                      >
-                        <div className="flex gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                            <Laptop size={18} />
-                          </span>
-                          <div>
-                            <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                              {activeSession.name}
-                            </p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                              {activeSession.email} · {activeSession.role}
-                            </p>
-                            <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                              {activeSession.device} · {activeSession.location}
-                            </p>
-                          </div>
+                    {sessions.map((s) => (
+                      <div className="flex items-center gap-4 py-4" key={s.email}>
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-brand text-xs font-bold text-white">
+                          {s.name.slice(0, 2).toUpperCase()}
                         </div>
-                        {activeSession.current ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
-                            <CheckCircle2 size={12} />
-                            Sessão local atual · {activeSession.lastSeen}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
+                            {s.name}
+                          </p>
+                          <p className="truncate text-[11px] text-slate-600 dark:text-slate-400">
+                            {s.email}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="inline-flex items-center rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-300">
+                            {s.role}
                           </span>
-                        ) : (
-                          <button className="text-left text-[10px] font-semibold text-red-700 transition hover:text-red-800 dark:text-red-300 dark:hover:text-red-200">
-                            Encerramento em roadmap
-                          </button>
-                        )}
+                          <span className="text-[10px] text-slate-500">
+                            {s.current ? "Atual" : s.lastSeen}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -456,44 +426,34 @@ export default function SettingsPage() {
 
             {activeTab === "notifications" && (
               <Card
-                description="Preferências demonstrativas salvas localmente até existir endpoint real de envio."
-                title="Preferências locais de notificação"
+                description="Preferências armazenadas localmente. Notificações reais por e-mail/WhatsApp dependem de serviços externos."
+                title="Canais de notificação"
               >
-                <Notification tone="info" title="Canais ainda demonstrativos">
-                  E-mail planejado e WhatsApp planejado ficam configurados apenas
-                  no navegador. Nenhum SMTP, WhatsApp ou API externa é chamado
-                  nesta etapa.
-                </Notification>
-
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {notificationItems.map((item) => (
                     <div
-                      className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"
+                      className="flex items-start justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--surf2)] p-4"
                       key={item.key}
                     >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                            {item.label}
-                          </p>
-                          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                            {item.desc}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <ChannelToggle
-                            active={notificationPreferences[item.key].email}
-                            icon={<Mail size={13} />}
-                            label="E-mail planejado"
-                            onClick={() => toggleNotificationChannel(item.key, "email")}
-                          />
-                          <ChannelToggle
-                            active={notificationPreferences[item.key].whatsapp}
-                            icon={<MessageCircle size={13} />}
-                            label="WhatsApp planejado"
-                            onClick={() => toggleNotificationChannel(item.key, "whatsapp")}
-                          />
-                        </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[var(--text)]">
+                          {item.label}
+                        </p>
+                        <p className="mt-0.5 text-xs text-[var(--text2)]">{item.desc}</p>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <ChannelButton
+                          active={notificationPreferences[item.key]?.email ?? false}
+                          icon={<Mail size={14} />}
+                          label="E-mail"
+                          onClick={() => toggleNotificationChannel(item.key, "email")}
+                        />
+                        <ChannelButton
+                          active={notificationPreferences[item.key]?.whatsapp ?? false}
+                          icon={<MessageCircle size={14} />}
+                          label="WhatsApp"
+                          onClick={() => toggleNotificationChannel(item.key, "whatsapp")}
+                        />
                       </div>
                     </div>
                   ))}
@@ -502,23 +462,26 @@ export default function SettingsPage() {
             )}
 
             {activeTab === "appearance" && (
-              <Card
-                description="A escolha é aplicada imediatamente e fica salva neste navegador."
-                title="Aparência"
-              >
-                <div className="grid gap-3 sm:grid-cols-2">
+              <Card title="Aparência">
+                <p className="mb-4 text-sm text-[var(--text2)]">
+                  Escolha como a interface é exibida neste dispositivo.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
                   {[
                     {
-                      desc: "Interface clara refinada para leitura em ambientes iluminados.",
+                      id: "light" as ThemePreference,
                       icon: Sun,
-                      id: "light" as const,
                       label: "Claro"
                     },
                     {
-                      desc: "Tema premium principal, com camadas escuras e acento teal.",
+                      id: "dark" as ThemePreference,
                       icon: Moon,
-                      id: "dark" as const,
                       label: "Escuro"
+                    },
+                    {
+                      id: "system" as ThemePreference,
+                      icon: Laptop,
+                      label: "Sistema"
                     }
                   ].map((option) => {
                     const Icon = option.icon;
@@ -527,39 +490,20 @@ export default function SettingsPage() {
                     return (
                       <button
                         className={cn(
-                          "flex items-start gap-3 rounded-lg border p-4 text-left transition",
+                          "flex flex-col items-center gap-2 rounded-lg border p-4 transition",
                           active
-                            ? "border-brand-teal/50 bg-brand-teal/10 shadow-glow-teal dark:bg-emerald-950/40"
-                            : "border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/20"
+                            ? "border-brand-teal bg-brand-teal/10 text-brand-teal-dark"
+                            : "border-[var(--border)] bg-[var(--surf2)] text-[var(--text2)] hover:border-brand-teal/40"
                         )}
                         key={option.id}
                         onClick={() => handleThemeChange(option.id)}
                         type="button"
                       >
-                        <span
-                          className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border",
-                            active
-                              ? "border-brand-teal/40 bg-white text-brand-teal dark:bg-slate-900"
-                              : "border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
-                          )}
-                        >
-                          <Icon size={18} />
-                        </span>
-                        <span>
-                          <span className="block text-xs font-semibold text-slate-900 dark:text-slate-100">
-                            {option.label}
-                          </span>
-                          <span className="mt-1 block text-[11px] leading-5 text-slate-500 dark:text-slate-400">
-                            {option.desc}
-                          </span>
-                          {active && (
-                            <span className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-semibold text-brand-teal">
-                              <CheckCircle2 size={12} />
-                              Tema ativo
-                            </span>
-                          )}
-                        </span>
+                        <Icon size={20} />
+                        <span className="text-xs font-medium">{option.label}</span>
+                        {active && (
+                          <CheckCircle2 className="text-brand-teal" size={16} />
+                        )}
                       </button>
                     );
                   })}
@@ -573,7 +517,22 @@ export default function SettingsPage() {
   );
 }
 
-function ChannelToggle({
+function Field({
+  children,
+  label
+}: {
+  children: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-medium text-[var(--text)]">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function ChannelButton({
   active,
   icon,
   label,
@@ -587,49 +546,27 @@ function ChannelToggle({
   return (
     <button
       className={cn(
-        "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-semibold transition",
+        "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition",
         active
-          ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-          : "border-slate-200 bg-white text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"
+          ? "border-brand-teal bg-brand-teal/10 text-brand-teal-dark"
+          : "border-[var(--border)] bg-[var(--surf)] text-[var(--text2)] hover:border-brand-teal/40"
       )}
       onClick={onClick}
       type="button"
     >
       {icon}
       {label}
-      <span
-        className={cn(
-          "ml-1 h-2 w-2 rounded-full",
-          active ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600"
-        )}
-      />
     </button>
   );
 }
 
-const inputClass =
-  "cv-input w-full px-3 text-sm";
-
-const selectClass =
-  "cv-input min-h-11 rounded-lg px-2 text-[11px]";
-
-function Field({ label, children }: { children: React.ReactNode; label: string }) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-xs font-semibold text-[var(--text2)]">
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 function formatUserNameFromEmail(email: string): string {
-  const localPart = email.split("@")[0] ?? "";
-  const normalized = localPart
-    .replace(/[._-]+/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-    .trim();
-
-  return normalized || "Usuário local";
+  const [localPart] = email.split("@");
+  return localPart
+    .split(".")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
+
+const inputClass =
+  "w-full rounded-lg border border-[var(--border)] bg-[var(--surf2)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--text3)] focus:outline-none focus:ring-2 focus:ring-brand-teal/30";

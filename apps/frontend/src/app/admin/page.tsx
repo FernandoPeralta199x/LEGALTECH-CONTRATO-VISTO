@@ -6,7 +6,6 @@ import {
   Settings,
   Shield,
   TrendingUp,
-  User,
   Users
 } from "lucide-react";
 import Link from "next/link";
@@ -15,75 +14,26 @@ import { AppLayout } from "@/components/AppLayout";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Card } from "@/components/Card";
 import { PageTitle } from "@/components/PageTitle";
-import { StatusBadge } from "@/components/StatusBadge";
-import { formatDate, formatDateTime } from "@/lib/formatters";
-import {
-  mockAuditLogs,
-  mockCases,
-  mockOrganizations,
-  mockUsers
-} from "@/lib/mockData";
 
 const roleColors: Record<string, string> = {
   admin: "bg-brand-teal/10 text-brand-teal-dark border-brand-teal/20",
   analyst: "bg-brand-teal/10 text-brand-teal-light border-brand-teal/20",
   client: "bg-slate-100 text-slate-700 border-slate-200",
-  viewer: "bg-slate-600/10 text-slate-600 border-slate-600/20",
   owner: "bg-purple-500/10 text-purple-300 border-purple-500/20",
-  support: "bg-amber-50 text-amber-700 border-amber-500/20"
+  support: "bg-amber-50 text-amber-700 border-amber-500/20",
+  viewer: "bg-slate-600/10 text-slate-600 border-slate-600/20"
 };
 
 const roleLabels: Record<string, string> = {
   admin: "Admin",
   analyst: "Analista",
   client: "Cliente",
-  viewer: "Viewer",
   owner: "Owner",
-  support: "Suporte"
-};
-
-const auditActionLabel: Record<string, string> = {
-  case_created: "Caso registrado no mock",
-  case_submitted: "Caso marcado no mock",
-  document_uploaded: "Documento anexado no mock",
-  document_processed: "Documento marcado no mock",
-  agent_started: "Agente demonstrativo iniciado",
-  agent_completed: "Agente demonstrativo concluído",
-  report_generated: "Relatório demonstrativo registrado",
-  review_approved: "Registro positivo no mock",
-  review_rejected: "Registro negativo no mock",
-  review_adjustment: "Ajuste mockado solicitado",
-  status_changed: "Status mockado alterado",
-  user_login: "Login demonstrativo",
-  user_logout: "Logout demonstrativo"
+  support: "Suporte",
+  viewer: "Viewer"
 };
 
 export default function AdminPage() {
-  const statusCounts = [
-    {
-      label: "Análise local/mock",
-      count: mockCases.filter((c) =>
-        ["processing", "analise_contratual", "compliance", "minuta_relatorio"].includes(c.status)
-      ).length,
-      color: "text-violet-700"
-    },
-    {
-      label: "Revisão local",
-      count: mockCases.filter((c) => c.status === "revisao_humana").length,
-      color: "text-amber-700"
-    },
-    {
-      label: "Entrega demonstrativa",
-      count: mockCases.filter((c) => c.status === "delivered").length,
-      color: "text-teal-400"
-    },
-    {
-      label: "Rascunho local",
-      count: mockCases.filter((c) => c.status === "draft").length,
-      color: "text-slate-600"
-    }
-  ];
-
   return (
     <AuthGuard>
       <AppLayout>
@@ -102,7 +52,7 @@ export default function AdminPage() {
                 href="/settings"
               >
                 <Settings size={15} />
-                Configurações locais
+                Configurações
               </Link>
               <Link
                 className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surf)] px-3.5 py-2.5 text-sm font-medium text-[var(--text)] transition hover:border-brand-teal/40"
@@ -113,9 +63,9 @@ export default function AdminPage() {
               </Link>
             </>
           }
-          description="Visão de governança local para acompanhar organização, equipe, papéis e registros operacionais mockados do MVP. Os dados abaixo são demonstrativos e não representam administração, auth/RBAC, sessões, notificações ou auditoria reais."
+          description="Visão de governança local do MVP. Convites, gerenciamento real de usuários, RBAC, sessões, auditoria e billing dependem de backend e auth aprovados para produção."
           eyebrow="Administração"
-          title="Governança operacional do MVP local"
+          title="Governança operacional"
         />
 
         <div className="mb-6 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
@@ -165,37 +115,36 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* System overview */}
         <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
             {
-              label: "Membros ativos no mock",
-              value: mockUsers.filter((u) => u.status === "active").length,
-              hint: "Equipe demonstrativa; não cria usuário real.",
+              label: "Membros ativos",
+              value: "—",
+              hint: "Gerenciamento real de equipe em construção.",
               icon: Users,
               color: "text-brand-teal-dark",
               bg: "bg-brand-teal/10 border-brand-teal/20"
             },
             {
-              label: "Organizações demonstrativas",
-              value: mockOrganizations.length,
-              hint: "Tenants demonstrativos, sem tenant admin real.",
+              label: "Organizações",
+              value: "—",
+              hint: "Tenant admin real em construção.",
               icon: Building2,
               color: "text-brand-teal-light",
               bg: "bg-brand-teal/10 border-brand-teal/20"
             },
             {
-              label: "Casos na base local",
-              value: mockCases.length,
-              hint: "Contagem derivada dos mocks existentes.",
+              label: "Casos ativos",
+              value: "—",
+              hint: "Métricas operacionais reais em construção.",
               icon: Activity,
               color: "text-violet-700",
               bg: "bg-violet-500/10 border-violet-500/20"
             },
             {
-              label: "Registros mockados de auditoria",
-              value: mockAuditLogs.length,
-              hint: "Referência visual; não é trilha auditável real.",
+              label: "Registros de auditoria",
+              value: "—",
+              hint: "Trilha auditável real em construção.",
               icon: Shield,
               color: "text-amber-400",
               bg: "bg-amber-50 border-amber-500/20"
@@ -226,150 +175,29 @@ export default function AdminPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-2">
-          {/* Users */}
           <Card
-            title="Equipe local do MVP"
-            description="Contas demonstrativas por papel. Não cria usuário real, convite, senha, verificação ou alteração real de perfil."
+            title="Equipe"
+            description="Gerenciamento real de usuários, convites e papéis será habilitado quando auth/RBAC real for integrado."
           >
-            <div className="divide-y divide-white/[0.06]">
-              {mockUsers.map((user) => (
-                <div className="flex items-center gap-4 py-3" key={user.id}>
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-brand text-xs font-bold text-white">
-                    {user.avatarInitials}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-[var(--text)]">
-                      {user.name}
-                    </p>
-                    <p className="truncate text-[11px] text-[var(--text2)]">
-                      {user.email}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span
-                      className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-semibold ${
-                        roleColors[user.role] ?? "bg-slate-100 text-slate-700 border-slate-200"
-                      }`}
-                    >
-                      {roleLabels[user.role] ?? user.role}
-                    </span>
-                    <StatusBadge status={user.status} className="text-[10px]" />
-                  </div>
-                </div>
-              ))}
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surf2)] p-6 text-center">
+              <p className="text-sm text-[var(--text2)]">
+                Nenhum dado de equipe disponível no MVP local.
+              </p>
             </div>
           </Card>
 
-          {/* Organizations */}
           <Card
-            title="Organizações demonstrativas / Tenants"
-            description="Planos e limites demonstrativos. Não há billing, tenant admin real ou alteração de organização nesta tela."
+            title="Organizações / Tenants"
+            description="Configuração real de organizações, planos e limites será habilitada quando tenant admin for integrado."
           >
-            <div className="space-y-4">
-              {mockOrganizations.map((org) => (
-                <div
-                  className="rounded-lg border border-[var(--border)] bg-[var(--surf2)] p-4"
-                  key={org.id}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-teal/10 border border-brand-teal/20">
-                        <Building2 className="text-brand-teal-dark" size={16} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-[var(--text)]">
-                          {org.name}
-                        </p>
-                        <p className="text-[11px] text-[var(--text2)]">{org.cnpj}</p>
-                      </div>
-                    </div>
-                    <span className="rounded-full bg-brand-teal/10 px-2 py-0.5 text-[10px] font-semibold text-brand-teal-light capitalize">
-                      {org.plan}
-                    </span>
-                  </div>
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between mb-1.5 text-[11px]">
-                      <span className="text-[var(--text2)]">Uso local demonstrativo</span>
-                      <span className="font-semibold text-[var(--text)]">
-                        {org.casesUsed}/{org.casesLimit}
-                      </span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
-                      <div
-                        className="h-1.5 rounded-full bg-brand-blue transition-all"
-                        style={{
-                          width: `${(org.casesUsed / org.casesLimit) * 100}%`
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* Cases by status */}
-          <Card
-            title="Casos por status mockado"
-            description="Distribuição derivada dos mocks existentes para orientar a operação."
-          >
-            <div className="space-y-3">
-              {statusCounts.map((item) => (
-                <div key={item.label}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-xs text-[var(--text2)]">{item.label}</p>
-                    <p className={`text-sm font-bold ${item.color}`}>
-                      {item.count}
-                    </p>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className={`h-1.5 rounded-full ${
-                        item.color.replace("text-", "bg-")
-                      }`}
-                      style={{
-                        width: `${(item.count / mockCases.length) * 100}%`
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* Audit logs */}
-          <Card
-            title="Registros de auditoria mockados"
-            description="Trilha visual de referência. Logs reais, retenção e auditoria real dependem de backend/auth aprovados."
-          >
-            <div className="space-y-3">
-              {mockAuditLogs.map((log) => (
-                <div
-                  className="flex items-start gap-3 rounded-lg border border-[var(--border)] bg-[var(--surf2)] p-3"
-                  key={log.id}
-                >
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-teal/10 border border-brand-teal/20">
-                    <Shield className="text-brand-teal" size={12} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-[11px] font-semibold text-[var(--text)]">
-                        {auditActionLabel[log.action] ?? log.action}
-                      </p>
-                      <span className="shrink-0 text-[10px] text-[var(--text2)]">
-                        {formatDate(log.createdAt)}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[var(--text2)]">{log.description}</p>
-                    <p className="text-[10px] text-[var(--text2)]">{log.userName}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surf2)] p-6 text-center">
+              <p className="text-sm text-[var(--text2)]">
+                Nenhuma organização administrável nesta tela.
+              </p>
             </div>
           </Card>
         </div>
 
-        {/* Roles & permissions reference */}
         <div className="mt-6">
           <Card
             title="Roles e permissões como referência local"
@@ -399,7 +227,7 @@ export default function AdminPage() {
                   key={item.role}
                 >
                   <span
-                    className={`inline-flex items-center rounded border px-2.5 py-1 text-xs font-semibold shrink-0 ${
+                    className={`inline-flex shrink-0 items-center rounded border px-2.5 py-1 text-xs font-semibold ${
                       roleColors[item.role] ?? "bg-slate-100 text-slate-700 border-slate-200"
                     }`}
                   >

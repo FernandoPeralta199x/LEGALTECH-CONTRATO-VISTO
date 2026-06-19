@@ -399,9 +399,9 @@ function mapWizardSubmitPayload(input: WizardOperationalSubmitInput) {
     product_label: productLabel,
     title: wizardTitle(input),
     description: wizardDescription(input),
-    source_mode: "mock",
+    source_mode: "local",
     idempotency_key: input.idempotencyKey,
-    notes: "Criado pelo Wizard operacional backend mock/local.",
+    notes: "Criado pelo Wizard operacional backend local.",
     selected_modules: activeModules,
     parties: input.parties
       .filter((party) => party.nome.trim())
@@ -437,7 +437,7 @@ function mapWizardSubmitPayload(input: WizardOperationalSubmitInput) {
       modules: activeModules,
       product: input.produto,
       source: "new_case_wizard",
-      source_mode: "mock"
+      source_mode: "local"
     }
   };
 }

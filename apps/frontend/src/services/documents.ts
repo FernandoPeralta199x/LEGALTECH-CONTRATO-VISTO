@@ -1,7 +1,7 @@
 import { formatBytes } from "@/lib/formatters";
 import type { Document, DocumentCreate, DocumentUpdate } from "../../types";
-import { apiClient, resolveApiBaseUrl } from "./apiClient";
-import { fallbackReason, shouldUseMockFallback, type ServiceResult } from "./fallback";
+import { apiClient } from "./apiClient";
+import { shouldUseMockFallback, fallbackReason, type ServiceResult } from "./fallback";
 
 type BackendDocument = {
   id: string;
@@ -194,43 +194,27 @@ export async function uploadDocument(
 export async function getDocument(
   documentId: string
 ): Promise<ServiceResult<Document>> {
-  try {
-    const response = await apiClient.get<BackendDocument>(
-      `/api/v1/documents/${documentId}`
-    );
-    return {
-      data: mapBackendDocument(response.data),
-      source: "api"
-    };
-  } catch (error) {
-    if (!shouldUseMockFallback(error)) {
-      throw error;
-    }
-
-    throw error;
-  }
+  const response = await apiClient.get<BackendDocument>(
+    `/api/v1/documents/${documentId}`
+  );
+  return {
+    data: mapBackendDocument(response.data),
+    source: "api"
+  };
 }
 
 export async function updateDocument(
   documentId: string,
   payload: DocumentUpdate
 ): Promise<ServiceResult<Document>> {
-  try {
-    const response = await apiClient.patch<BackendDocument>(
-      `/api/v1/documents/${documentId}`,
-      payload
-    );
-    return {
-      data: mapBackendDocument(response.data),
-      source: "api"
-    };
-  } catch (error) {
-    if (!shouldUseMockFallback(error)) {
-      throw error;
-    }
-
-    throw error;
-  }
+  const response = await apiClient.patch<BackendDocument>(
+    `/api/v1/documents/${documentId}`,
+    payload
+  );
+  return {
+    data: mapBackendDocument(response.data),
+    source: "api"
+  };
 }
 
 export async function getDocumentDownloadUrl(
@@ -249,15 +233,7 @@ export async function getDocumentDownloadUrl(
       throw error;
     }
 
-    return {
-      data: {
-        expires_in_seconds: 900,
-        method: "GET",
-        url: `${resolveApiBaseUrl()}/mock-download-unavailable`
-      },
-      fallbackReason: fallbackReason(error),
-      source: "mock"
-    };
+    throw new Error("Download indisponível no modo fallback.");
   }
 }
 
@@ -278,15 +254,6 @@ export async function enqueueDocumentProcessing(
       throw error;
     }
 
-    return {
-      data: {
-        document_id: documentId,
-        job_id: `job-local-${Date.now()}`,
-        queue_backend: "mock",
-        status: "queued"
-      },
-      fallbackReason: fallbackReason(error),
-      source: "mock"
-    };
+    throw new Error("Processamento não pode ser enfileirado no modo fallback.");
   }
 }
