@@ -41,3 +41,5 @@ AUTH_UNAUTHORIZED = "auth.unauthorized"
 RBAC_DENIED = "rbac.denied"
 
 ROLES_PERMISSIONS_SEED = "roles_permissions.seed"
+
+PRICING_CHANGED = "pricing.changed"

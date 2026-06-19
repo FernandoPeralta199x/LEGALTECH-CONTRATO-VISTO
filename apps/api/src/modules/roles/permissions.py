@@ -39,6 +39,7 @@ HUMAN_REVIEWS_REQUEST_ADJUSTMENT: Final = "human_reviews:request_adjustment"
 EXTERNAL_QUERIES_READ: Final = "external_queries:read"
 EXTERNAL_QUERIES_WRITE: Final = "external_queries:write"
 PRICING_READ: Final = "pricing:read"
+PRICING_WRITE: Final = "pricing:write"
 
 ALL_BASE_PERMISSIONS: Final[frozenset[str]] = frozenset(
     {
@@ -80,6 +81,7 @@ ALL_BASE_PERMISSIONS: Final[frozenset[str]] = frozenset(
         EXTERNAL_QUERIES_READ,
         EXTERNAL_QUERIES_WRITE,
         PRICING_READ,
+        PRICING_WRITE,
     }
 )
 
@@ -123,6 +125,7 @@ BASE_ROLE_PERMISSIONS: Final[dict[str, frozenset[str]]] = {
             EXTERNAL_QUERIES_READ,
             EXTERNAL_QUERIES_WRITE,
             PRICING_READ,
+            PRICING_WRITE,
         }
     ),
     "analyst": frozenset(

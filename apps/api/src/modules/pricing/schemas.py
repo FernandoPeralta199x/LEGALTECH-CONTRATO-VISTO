@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.modules.pricing.config import (
@@ -72,3 +75,65 @@ class PricingEstimateSchema(BaseModel):
     modules_total_cents: int
     total_price_cents: int
     sla_hours: int
+
+
+# ---------------------------------------------------------------------------
+# Admin schemas
+# ---------------------------------------------------------------------------
+
+
+class ProductOverrideSchema(BaseModel):
+    """Partial override for a single product (admin-only)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    base_price_cents: int = Field(ge=0)
+
+
+class ModuleOverrideSchema(BaseModel):
+    """Partial override for a single module (admin-only)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    price_cents: int = Field(ge=0)
+
+
+class UpdatePricingConfigRequest(BaseModel):
+    """Request body for ``PUT /api/v1/pricing/config``.
+
+    All fields are optional (partial update).  Omitted fields are left unchanged.
+    ``cases_limit = null`` explicitly means unlimited.
+    Use ``model_dump(exclude_unset=True)`` to detect which fields were sent.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    cases_limit: int | None = Field(default=None, ge=1)
+    product_overrides: dict[ProductCode, ProductOverrideSchema] | None = None
+    module_overrides: dict[ModuleCode, ModuleOverrideSchema] | None = None
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class PricingConfigResponseSchema(BaseModel):
+    """Response for ``GET /api/v1/pricing/config``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    organization_id: UUID
+    cases_limit: int | None
+    product_overrides: dict[str, ProductOverrideSchema]
+    module_overrides: dict[str, ModuleOverrideSchema]
+    version: int
+    notes: str | None
+    updated_by: UUID | None
+    updated_at: datetime
+
+
+class CasesLimitCheckSchema(BaseModel):
+    """Response for cases_limit enforcement check."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    cases_limit: int | None
+    active_cases_count: int
+    allowed: bool

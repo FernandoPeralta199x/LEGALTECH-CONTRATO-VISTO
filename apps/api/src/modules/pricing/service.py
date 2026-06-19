@@ -1,7 +1,16 @@
-"""Pricing service: authoritative catalog reads and server-side estimates."""
+"""Pricing service: catalog reads, server-side estimates, and admin operations."""
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Annotated, Any
+from uuid import UUID
+
+from fastapi import Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from src.db.session import get_db
+from src.modules.audit import actions
+from src.modules.audit.service import AuditLogService, get_audit_log_service
 from src.modules.pricing.config import (
     HUMAN_REVIEW_MODULE,
     MATRIX,
@@ -13,22 +22,44 @@ from src.modules.pricing.config import (
     SLA_HUMAN_REVIEW_EXTRA_HOURS,
     SLA_MEETING_PRODUCT_EXTRA_HOURS,
 )
+from src.modules.pricing.repository import PricingConfigRepository
 from src.modules.pricing.schemas import (
+    CasesLimitCheckSchema,
+    ModuleOverrideSchema,
     PricingCatalogSchema,
+    PricingConfigResponseSchema,
     PricingEstimateSchema,
     PricingLineItemSchema,
     PricingSlaRulesSchema,
+    ProductOverrideSchema,
+    UpdatePricingConfigRequest,
 )
+
+if TYPE_CHECKING:
+    from src.models.pricing_config import PricingConfig
 
 
 class PricingService:
-    """Read-only pricing service backed by the in-code catalog.
+    """Pricing service: global catalog + per-org admin overrides.
 
-    Mirrors the frontend ``produtoConfig.ts`` so the wizard can read prices from
-    the backend instead of hardcoding them. DB-backed administrable pricing
-    (history, overrides, ``pricing_changed`` audit) is planned for 28P-B /
-    FASE 2 and is not implemented here.
+    Catalog-only methods (``get_catalog``, ``estimate``) read from the in-code
+    defaults and do not require a DB session.  Admin methods (``get_org_config``,
+    ``update_org_config``, ``check_cases_limit``) require a DB session and use
+    ``PricingConfigRepository``.
     """
+
+    def __init__(
+        self,
+        db: Session | None = None,
+        audit: AuditLogService | None = None,
+    ) -> None:
+        self._db = db
+        self._repository = PricingConfigRepository(db) if db else None
+        self._audit = audit
+
+    # ------------------------------------------------------------------
+    # Catalog (read-only, no DB)
+    # ------------------------------------------------------------------
 
     def get_catalog(self) -> PricingCatalogSchema:
         return PricingCatalogSchema(
@@ -55,7 +86,7 @@ class PricingService:
 
         ``product`` and ``modules`` are validated against the catalog by the
         request schema (``Literal`` codes), so lookups below are guaranteed to
-        resolve. Duplicate modules are collapsed to a single line item.
+        resolve.  Duplicate modules are collapsed to a single line item.
         """
         product_meta = PRODUCTS[product]
 
@@ -86,6 +117,145 @@ class PricingService:
             sla_hours=sla_hours,
         )
 
+    # ------------------------------------------------------------------
+    # Admin (requires DB)
+    # ------------------------------------------------------------------
+
+    def _require_repository(self) -> PricingConfigRepository:
+        if self._repository is None:
+            raise ValueError("DB session is required for admin pricing operations.")
+        return self._repository
+
+    def get_org_config(
+        self,
+        *,
+        organization_id: UUID | str,
+    ) -> PricingConfigResponseSchema:
+        """Return the org's pricing config (overrides + limits).
+
+        If no config exists yet, returns default values (empty overrides,
+        unlimited cases).
+        """
+        repo = self._require_repository()
+        config = repo.get_by_organization(organization_id=organization_id)
+        return self._config_to_schema(config, organization_id=organization_id)
+
+    def update_org_config(
+        self,
+        *,
+        organization_id: UUID | str,
+        user_id: UUID | str,
+        payload: UpdatePricingConfigRequest,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> PricingConfigResponseSchema:
+        """Update the org's pricing config and record an audit event.
+
+        Only fields present in the payload are changed (partial update via
+        ``exclude_unset``).  The audit event captures old/new values.
+        """
+        repo = self._require_repository()
+        old_config = repo.get_by_organization(organization_id=organization_id)
+        old_snapshot = self._snapshot_config(old_config)
+
+        changes = payload.model_dump(exclude_unset=True)
+        if not changes:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="No fields to update.",
+            )
+
+        # Serialize overrides to plain dicts for DB storage
+        product_overrides = None
+        if "product_overrides" in changes and changes["product_overrides"] is not None:
+            product_overrides = {
+                code: override.model_dump()
+                for code, override in payload.product_overrides.items()
+            }
+        module_overrides = None
+        if "module_overrides" in changes and changes["module_overrides"] is not None:
+            module_overrides = {
+                code: override.model_dump()
+                for code, override in payload.module_overrides.items()
+            }
+
+        config = repo.upsert(
+            organization_id=organization_id,
+            updated_by=user_id,
+            cases_limit=changes.get("cases_limit", ...),
+            product_overrides=product_overrides,
+            module_overrides=module_overrides,
+            notes=changes.get("notes", ...),
+        )
+
+        new_snapshot = self._snapshot_config(config)
+
+        if self._audit is not None:
+            self._audit.record_event(
+                organization_id=organization_id,
+                user_id=user_id,
+                action=actions.PRICING_CHANGED,
+                entity_type="pricing_config",
+                entity_id=config.id,
+                metadata={
+                    "version": config.version,
+                    "old": old_snapshot,
+                    "new": new_snapshot,
+                    "changed_fields": list(changes.keys()),
+                },
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+
+        return self._config_to_schema(config, organization_id=organization_id)
+
+    def check_cases_limit(
+        self,
+        *,
+        organization_id: UUID | str,
+    ) -> CasesLimitCheckSchema:
+        """Check whether the org can create a new case (DB case count).
+
+        Returns the current limit, count, and whether creation is allowed.
+        Note: this checks the persistent DB case count.  The in-memory wizard
+        cases are not counted here — full enforcement requires FASE 8 (31B).
+        """
+        repo = self._require_repository()
+        config = repo.get_by_organization(organization_id=organization_id)
+        cases_limit = config.cases_limit if config else None
+        active_count = repo.count_active_cases(organization_id=organization_id)
+
+        allowed = cases_limit is None or active_count < cases_limit
+
+        return CasesLimitCheckSchema(
+            cases_limit=cases_limit,
+            active_cases_count=active_count,
+            allowed=allowed,
+        )
+
+    def enforce_cases_limit(
+        self,
+        *,
+        organization_id: UUID | str,
+    ) -> None:
+        """Raise 403 if the org has reached its cases_limit.
+
+        Call this from case-creation endpoints before persisting the case.
+        """
+        check = self.check_cases_limit(organization_id=organization_id)
+        if not check.allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Limite de casos atingido ({check.active_cases_count}"
+                    f"/{check.cases_limit}).  Contate o administrador."
+                ),
+            )
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
     @staticmethod
     def _unique_preserving_order(values: list[str]) -> list[str]:
         seen: set[str] = set()
@@ -96,6 +266,74 @@ class PricingService:
                 result.append(value)
         return result
 
+    @staticmethod
+    def _snapshot_config(config: PricingConfig | None) -> dict[str, Any]:
+        """Capture a JSON-safe snapshot for audit metadata."""
+        if config is None:
+            return {
+                "cases_limit": None,
+                "product_overrides": {},
+                "module_overrides": {},
+                "version": 0,
+                "notes": None,
+            }
+        return {
+            "cases_limit": config.cases_limit,
+            "product_overrides": config.product_overrides or {},
+            "module_overrides": config.module_overrides or {},
+            "version": config.version,
+            "notes": config.notes,
+        }
+
+    @staticmethod
+    def _config_to_schema(
+        config: PricingConfig | None,
+        *,
+        organization_id: UUID | str,
+    ) -> PricingConfigResponseSchema:
+        """Convert a DB model (or None) to the response schema."""
+        from src.modules.common.identifiers import parse_uuid
+
+        if config is None:
+            from datetime import UTC, datetime
+
+            return PricingConfigResponseSchema(
+                organization_id=parse_uuid(organization_id),
+                cases_limit=None,
+                product_overrides={},
+                module_overrides={},
+                version=0,
+                notes=None,
+                updated_by=None,
+                updated_at=datetime.now(UTC),
+            )
+
+        return PricingConfigResponseSchema(
+            organization_id=config.organization_id,
+            cases_limit=config.cases_limit,
+            product_overrides={
+                code: ProductOverrideSchema(**vals)
+                for code, vals in (config.product_overrides or {}).items()
+            },
+            module_overrides={
+                code: ModuleOverrideSchema(**vals)
+                for code, vals in (config.module_overrides or {}).items()
+            },
+            version=config.version,
+            notes=config.notes,
+            updated_by=config.updated_by,
+            updated_at=config.updated_at,
+        )
+
 
 def get_pricing_service() -> PricingService:
+    """Factory for catalog-only operations (no DB)."""
     return PricingService()
+
+
+def get_pricing_admin_service(
+    db: Annotated[Session, Depends(get_db)],
+    audit: Annotated[AuditLogService, Depends(get_audit_log_service)],
+) -> PricingService:
+    """Factory for admin operations (DB + audit required)."""
+    return PricingService(db=db, audit=audit)
