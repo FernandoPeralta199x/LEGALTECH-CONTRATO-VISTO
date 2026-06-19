@@ -16,6 +16,7 @@ export type DevSession = {
 };
 
 export type DevLoginInput = {
+  email?: string;
   role: DevRole;
   token?: string;
 };

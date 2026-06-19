@@ -35,6 +35,11 @@ class User(OrganizationScopedMixin, UUIDPrimaryKeyMixin, TimestampMixin, Base):
         server_default="active",
     )
     external_auth_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     metadata_json: Mapped[dict] = mapped_column(
         "metadata",
         JSONB,
