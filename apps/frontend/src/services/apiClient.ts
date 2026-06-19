@@ -232,6 +232,11 @@ export const apiClient = {
       method: "PUT",
       body: JSON.stringify(body)
     }),
+  delete: <T>(path: string, options?: ApiClientOptions) =>
+    apiRequest<T>(path, {
+      ...options,
+      method: "DELETE"
+    }),
   postForm: <T>(path: string, body: FormData, options?: ApiClientOptions) =>
     apiRequest<T>(path, {
       ...options,

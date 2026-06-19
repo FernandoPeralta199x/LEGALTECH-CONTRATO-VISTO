@@ -35,6 +35,8 @@ class CaseRepositoryProtocol(Protocol):
 
     def update_case(self, case: Case, values: dict) -> Case: ...
 
+    def soft_delete_case(self, case: Case) -> Case: ...
+
 
 class ClientRepositoryProtocol(Protocol):
     def get_client(
@@ -152,3 +154,16 @@ class CaseService:
             values["metadata_json"] = values.pop("metadata")
 
         return self.repository.update_case(case, values)
+
+    def delete_case(
+        self,
+        *,
+        organization_id: UUID | str,
+        case_id: UUID | str,
+    ) -> Case:
+        """Soft-delete (sets ``deleted_at``) so the case disappears from listings."""
+        case = self.get_case(
+            organization_id=organization_id,
+            case_id=case_id,
+        )
+        return self.repository.soft_delete_case(case)

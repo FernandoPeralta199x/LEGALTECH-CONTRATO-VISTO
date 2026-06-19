@@ -177,6 +177,20 @@ export function saveStoredLocalCase(legalCase: Case): Case {
   return legalCase;
 }
 
+export function removeStoredLocalCase(caseId: string): boolean {
+  const storage = getLocalStorage();
+  if (!storage) return false;
+
+  const current = getStoredLocalCases();
+  const next = current.filter(
+    (storedCase) => storedCase.id !== caseId && storedCase.code !== caseId
+  );
+  if (next.length === current.length) return false;
+
+  storage.setItem(LOCAL_CASES_STORAGE_KEY, JSON.stringify(next));
+  return true;
+}
+
 export function findStoredLocalCase(caseId: string): Case | undefined {
   return getStoredLocalCases().find(
     (legalCase) => legalCase.id === caseId || legalCase.code === caseId

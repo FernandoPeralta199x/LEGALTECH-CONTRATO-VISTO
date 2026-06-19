@@ -286,6 +286,36 @@ textarea:-webkit-autofill:focus {
     transform: translateY(-2px);
   }
 
+  .cv-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    width: 28px;
+    border-radius: 8px;
+    border: 1px solid var(--bd);
+    background: var(--surf2);
+    color: var(--text2);
+    transition: all 0.15s;
+  }
+
+  .cv-icon-btn:hover:not(:disabled) {
+    border-color: var(--bd2);
+    background: var(--surf3);
+    color: var(--text);
+  }
+
+  .cv-icon-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .cv-icon-btn--danger:hover:not(:disabled) {
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+  }
+
   .cv-form-card,
   .cv-list-row,
   .cv-subtle-panel {

@@ -1,5 +1,7 @@
 from uuid import UUID
 
+from datetime import UTC, datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -65,6 +67,12 @@ class CaseRepository:
         for field, value in values.items():
             setattr(case, field, value)
 
+        self.db.flush()
+        self.db.refresh(case)
+        return case
+
+    def soft_delete_case(self, case: Case) -> Case:
+        case.deleted_at = datetime.now(UTC)
         self.db.flush()
         self.db.refresh(case)
         return case

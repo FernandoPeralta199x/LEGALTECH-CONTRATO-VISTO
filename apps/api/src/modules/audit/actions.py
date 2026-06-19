@@ -5,6 +5,7 @@ CLIENTS_LIST = "clients.list"
 
 CASES_CREATE = "cases.create"
 CASES_UPDATE = "cases.update"
+CASES_DELETE = "cases.delete"
 CASES_READ = "cases.read"
 CASES_LIST = "cases.list"
 

@@ -24,6 +24,7 @@ import type {
 import {
   findStoredLocalCase,
   getStoredLocalCases,
+  removeStoredLocalCase,
   saveLocalCaseFromWizard,
   saveStoredLocalCase,
   type LocalCaseWizardInput
@@ -1345,6 +1346,27 @@ export async function updateCase(
     });
     return {
       data: updated,
+      fallbackReason: fallbackReason(error),
+      source: "mock"
+    };
+  }
+}
+
+export async function deleteCase(
+  caseId: string
+): Promise<ServiceResult<{ id: string }>> {
+  try {
+    await apiClient.delete<{ id: string; deleted_at: string | null }>(
+      `/api/v1/cases/${caseId}`
+    );
+    return { data: { id: caseId }, source: "api" };
+  } catch (error) {
+    if (!shouldUseMockFallback(error)) {
+      throw error;
+    }
+    removeStoredLocalCase(caseId);
+    return {
+      data: { id: caseId },
       fallbackReason: fallbackReason(error),
       source: "mock"
     };

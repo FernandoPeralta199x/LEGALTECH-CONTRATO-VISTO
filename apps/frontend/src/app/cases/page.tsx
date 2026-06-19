@@ -6,11 +6,14 @@ import {
   Calendar,
   FileText,
   Filter,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
   Shield,
-  UsersRound
+  Trash2,
+  UsersRound,
+  X
 } from "lucide-react";
 import Link from "next/link";
 import type { FormEvent } from "react";
@@ -29,10 +32,10 @@ import { PriorityBadge } from "@/components/PriorityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate } from "@/lib/formatters";
 import { errorMessage } from "@/src/lib/errorMessage";
-import { createCase, listCases } from "@/src/services/cases";
+import { createCase, deleteCase, listCases, updateCase } from "@/src/services/cases";
 import { listClients } from "@/src/services/clients";
 import { validateCaseForm, type ValidationErrors } from "@/src/lib/validation";
-import type { Case, CaseCreate, CaseStatus, Client, Priority, ProductType } from "@/types";
+import type { Case, CaseCreate, CaseStatus, CaseUpdate, Client, Priority, ProductType } from "@/types";
 
 const caseTypeLabel: Record<string, string> = {
   compra_venda: "Compra e Venda",
@@ -169,6 +172,79 @@ export default function CasesPage() {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [editing, setEditing] = useState<Case | null>(null);
+  const [editPriority, setEditPriority] = useState<Priority>("normal");
+  const [editStatus, setEditStatus] = useState<CaseStatus>("draft");
+  const [editSaving, setEditSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  function openEdit(legalCase: Case, event: React.MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    setEditing(legalCase);
+    setEditPriority(legalCase.priority);
+    setEditStatus(legalCase.status);
+    setError("");
+    setSuccessMessage("");
+  }
+
+  function closeEdit() {
+    setEditing(null);
+    setEditSaving(false);
+  }
+
+  async function handleEditSave() {
+    if (!editing || editSaving) return;
+    setEditSaving(true);
+    setError("");
+    try {
+      const payload: CaseUpdate = {
+        priority: editPriority,
+        status: editStatus
+      };
+      const result = await updateCase(editing.id, payload, clients);
+      setCases((current) =>
+        current.map((c) => (c.id === editing.id ? result.data : c))
+      );
+      setSuccessMessage(
+        result.source === "mock"
+          ? "Caso atualizado no fallback local."
+          : "Caso atualizado pela API."
+      );
+      closeEdit();
+    } catch (err) {
+      setError(errorMessage(err, "Não foi possível salvar a edição."));
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleDelete(legalCase: Case, event: React.MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (deletingId) return;
+    const confirmed = window.confirm(
+      `Excluir o caso "${caseDisplayTitle(legalCase)}" (${legalCase.code})?\n\n` +
+        "Esta ação faz soft-delete: o caso some da listagem mas pode ser recuperado pelo admin do banco."
+    );
+    if (!confirmed) return;
+
+    setDeletingId(legalCase.id);
+    setError("");
+    try {
+      const result = await deleteCase(legalCase.id);
+      setCases((current) => current.filter((c) => c.id !== legalCase.id));
+      setSuccessMessage(
+        result.source === "mock"
+          ? "Caso removido do fallback local."
+          : "Caso excluído pela API."
+      );
+    } catch (err) {
+      setError(errorMessage(err, "Não foi possível excluir o caso."));
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const refreshCases = useCallback(async () => {
     setLoading(true);
@@ -544,7 +620,26 @@ export default function CasesPage() {
                       size={18}
                     />
                   </div>
-                  <StatusBadge status={c.status} />
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      aria-label="Editar caso"
+                      className="cv-icon-btn"
+                      onClick={(e) => openEdit(c, e)}
+                      type="button"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      aria-label="Excluir caso"
+                      className="cv-icon-btn cv-icon-btn--danger"
+                      disabled={deletingId === c.id}
+                      onClick={(e) => handleDelete(c, e)}
+                      type="button"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                    <StatusBadge status={c.status} />
+                  </div>
                 </div>
 
                 <p className="mt-4 text-[11px] font-semibold text-brand-teal">
@@ -611,6 +706,77 @@ export default function CasesPage() {
                 </div>
               </Link>
             ))}
+          </div>
+        )}
+
+        {editing && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={closeEdit}
+          >
+            <div
+              className="cv-card w-full max-w-md p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3 mb-5">
+                <div>
+                  <h2 className="text-base font-bold text-[var(--text)]">
+                    Editar caso
+                  </h2>
+                  <p className="mt-1 text-xs text-[var(--text2)]">
+                    {editing.code} · {caseDisplayTitle(editing)}
+                  </p>
+                </div>
+                <button
+                  aria-label="Fechar"
+                  className="cv-icon-btn"
+                  onClick={closeEdit}
+                  type="button"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <FormField label="Prioridade">
+                  <SelectInput
+                    onChange={(e) => setEditPriority(e.target.value as Priority)}
+                    value={editPriority}
+                  >
+                    <option value="low">Baixa</option>
+                    <option value="normal">Normal</option>
+                    <option value="high">Alta</option>
+                    <option value="urgent">Urgente</option>
+                  </SelectInput>
+                </FormField>
+
+                <FormField label="Status">
+                  <SelectInput
+                    onChange={(e) => setEditStatus(e.target.value as CaseStatus)}
+                    value={editStatus}
+                  >
+                    {statusFilterOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </SelectInput>
+                </FormField>
+              </div>
+
+              <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  disabled={editSaving}
+                  onClick={closeEdit}
+                  variant="secondary"
+                >
+                  Cancelar
+                </Button>
+                <Button loading={editSaving} onClick={() => void handleEditSave()}>
+                  Salvar alterações
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </AppLayout>

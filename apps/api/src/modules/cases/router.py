@@ -237,3 +237,46 @@ def update_case(
     )
 
     return success_response(serialize_case(case), "Caso atualizado com sucesso.")
+
+
+@router.delete("/{case_id}", status_code=status.HTTP_200_OK)
+def delete_case(
+    case_id: UUID,
+    request: Request,
+    service: Annotated[CaseService, Depends(get_case_service)],
+    timeline: Annotated[TimelineService, Depends(get_timeline_service)],
+    audit_log: Annotated[AuditLogService, Depends(get_audit_log_service)],
+    tenant: Annotated[TenantContext, Depends(require_permission("cases:write"))],
+) -> dict[str, object]:
+    """Soft-delete a case (sets ``deleted_at``)."""
+    case = service.delete_case(
+        organization_id=tenant.organization_id,
+        case_id=case_id,
+    )
+    audit_log.record_event(
+        organization_id=tenant.organization_id,
+        user_id=tenant.user_id,
+        action=actions.CASES_DELETE,
+        entity_type="case",
+        entity_id=case.id,
+        metadata={"source": "api"},
+        ip_address=request_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+    timeline.try_append_event(
+        organization_id=tenant.organization_id,
+        case_id=case_id,
+        payload=TimelineEventCreate(
+            type="case_deleted",
+            title="Caso excluído",
+            description="O caso foi removido (soft-delete).",
+            severity=TimelineSeverity.WARNING,
+            source=TimelineSource.USER,
+            source_mode=SourceMode.LOCAL,
+        ),
+    )
+
+    return success_response(
+        {"id": str(case.id), "deleted_at": case.deleted_at.isoformat() if case.deleted_at else None},
+        "Caso excluído com sucesso.",
+    )
