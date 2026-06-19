@@ -38,6 +38,7 @@ HUMAN_REVIEWS_REJECT: Final = "human_reviews:reject"
 HUMAN_REVIEWS_REQUEST_ADJUSTMENT: Final = "human_reviews:request_adjustment"
 EXTERNAL_QUERIES_READ: Final = "external_queries:read"
 EXTERNAL_QUERIES_WRITE: Final = "external_queries:write"
+PRICING_READ: Final = "pricing:read"
 
 ALL_BASE_PERMISSIONS: Final[frozenset[str]] = frozenset(
     {
@@ -78,6 +79,7 @@ ALL_BASE_PERMISSIONS: Final[frozenset[str]] = frozenset(
         HUMAN_REVIEWS_REQUEST_ADJUSTMENT,
         EXTERNAL_QUERIES_READ,
         EXTERNAL_QUERIES_WRITE,
+        PRICING_READ,
     }
 )
 
@@ -120,6 +122,7 @@ BASE_ROLE_PERMISSIONS: Final[dict[str, frozenset[str]]] = {
             HUMAN_REVIEWS_REQUEST_ADJUSTMENT,
             EXTERNAL_QUERIES_READ,
             EXTERNAL_QUERIES_WRITE,
+            PRICING_READ,
         }
     ),
     "analyst": frozenset(
@@ -147,6 +150,7 @@ BASE_ROLE_PERMISSIONS: Final[dict[str, frozenset[str]]] = {
             HUMAN_REVIEWS_REQUEST_ADJUSTMENT,
             EXTERNAL_QUERIES_READ,
             EXTERNAL_QUERIES_WRITE,
+            PRICING_READ,
         }
     ),
     "client": frozenset(
@@ -164,6 +168,7 @@ BASE_ROLE_PERMISSIONS: Final[dict[str, frozenset[str]]] = {
             DOCUMENTS_DELETE,
             REPORTS_READ,
             REPORTS_DOWNLOAD,
+            PRICING_READ,
         }
     ),
     "support": frozenset(
@@ -175,6 +180,7 @@ BASE_ROLE_PERMISSIONS: Final[dict[str, frozenset[str]]] = {
             DOCUMENTS_DOWNLOAD,
             USERS_READ,
             REPORTS_READ,
+            PRICING_READ,
         }
     ),
 }

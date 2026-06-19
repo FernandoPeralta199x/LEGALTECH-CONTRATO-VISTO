@@ -22,6 +22,7 @@ from src.modules.document_processing.router import router as document_processing
 from src.modules.documents.router import router as documents_router
 from src.modules.documents.router import case_router as case_documents_router
 from src.modules.health.router import router as health_router
+from src.modules.pricing.router import router as pricing_router
 from src.modules.provider_results.router import router as provider_results_router
 from src.modules.requests.router import router as requests_router
 from src.modules.reports.router import router as reports_router
@@ -106,6 +107,7 @@ def create_app() -> FastAPI:
     app.include_router(reports_router)
     app.include_router(documents_router)
     app.include_router(requests_router)
+    app.include_router(pricing_router)
     app.include_router(document_processing_router)
     app.include_router(audit_router)
 
