@@ -23,7 +23,7 @@ import { errorMessage } from "@/src/lib/errorMessage";
 import { saveDevSession } from "@/src/services/auth";
 import { login, register as registerUser, verifyEmail } from "@/src/services/authApi";
 import { useDevSession } from "@/src/lib/useDevSession";
-import { validatePasswordChange } from "@/src/lib/validation";
+import { validatePasswordCreate } from "@/src/lib/validation";
 import { DEV_ROLES, type DevRole } from "@/src/types/auth";
 
 type Tab = "login" | "register";
@@ -57,10 +57,8 @@ function LoginContent() {
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [showVerification, setShowVerification] = useState(false);
 
-  const passwordValidation = validatePasswordChange({
-    confirmPassword: registerPassword,
-    currentPassword: "",
-    newPassword: registerPassword
+  const passwordValidation = validatePasswordCreate({
+    password: registerPassword
   });
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {

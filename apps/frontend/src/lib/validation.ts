@@ -329,6 +329,27 @@ export function getPasswordRequirements(password: string): PasswordRequirementSt
   };
 }
 
+export function validatePasswordCreate(input: {
+  password: string;
+}): PasswordValidationResult {
+  const errors: ValidationErrors = {};
+  const password = input.password ?? "";
+  const requirements = getPasswordRequirements(password);
+
+  if (!password) {
+    errors.newPassword = "Informe a senha.";
+  } else if (password.length < 8 || password.length > 16) {
+    errors.newPassword = "A senha deve ter entre 8 e 16 caracteres.";
+  } else if (!Object.values(requirements).every(Boolean)) {
+    errors.newPassword = "A senha deve atender todos os requisitos.";
+  }
+
+  return {
+    ...result(errors),
+    requirements
+  };
+}
+
 export function validatePasswordChange(input: {
   confirmPassword?: string | null;
   currentPassword?: string | null;
