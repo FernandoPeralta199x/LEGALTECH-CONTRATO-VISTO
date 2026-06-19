@@ -1,0 +1,82 @@
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.example.local
+
+# Secrets and credentials
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+aws-credentials*
+credentials.json
+secrets.*
+.aws/
+*.tfvars
+terraform.tfstate
+terraform.tfstate.*
+.terraform/
+.terraform.lock.hcl
+cdk.out/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+build/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm-cache/
+apps/frontend/.npm-cache/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Alembic / database local artifacts
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Local generated files
+tmp/
+temp/
+.cache/
+.local/
+apps/api/storage/local_uploads/
+apps/api/storage/local_queue/
+apps/api/storage/triage_results/
+
+# Agent / editor tooling (never push)
+.verdent/
+.claude/
+.claude-flow/
+.swarm/
+.mcp.json

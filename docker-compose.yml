@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: legaltech-postgres
+    environment:
+      POSTGRES_DB: legaltech
+      POSTGRES_USER: legaltech
+      POSTGRES_PASSWORD: legaltech_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - legaltech_postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U legaltech -d legaltech"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: legaltech-api
+    environment:
+      DATABASE_URL: postgresql+psycopg://legaltech:legaltech_dev@postgres:5432/legaltech
+      APP_ENV: local
+      AUTH_PROVIDER: dev_jwt
+      DEV_JWT_ENABLED: "true"
+      DEV_JWT_SECRET: fictitious-local-dev-secret-32-bytes-minimum
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000,http://192.168.0.102:3000"
+      STORAGE_BACKEND: local
+      LOCAL_UPLOAD_ROOT: storage/local_uploads
+      QUEUE_BACKEND: local
+      LOCAL_QUEUE_PATH: storage/local_queue/document_processing.jsonl
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/api/src:/app/src
+      - ./apps/api/alembic:/app/alembic
+      - ./apps/api/alembic.ini:/app/alembic.ini
+      - ./apps/api/storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  legaltech_postgres_data:
