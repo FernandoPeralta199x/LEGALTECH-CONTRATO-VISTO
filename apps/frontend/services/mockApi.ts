@@ -10,7 +10,7 @@ import {
   mockReviews,
   mockTimeline,
   mockUsers
-} from "@/lib/mockData";
+} from "@/lib/dev/mockData";
 import type {
   AgentExecution,
   AuditLog,

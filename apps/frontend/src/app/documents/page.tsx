@@ -209,7 +209,7 @@ export default function DocumentsPage() {
       clearSelectedFile();
       setFormErrors({});
     } catch (err) {
-      setError(errorMessage(err, "Não foi possível carregar documentos."));
+      setError(errorMessage(err, "Não foi possível enviar o documento."));
     } finally {
       setSubmitting(false);
     }
@@ -229,7 +229,7 @@ export default function DocumentsPage() {
           : `URL temporária gerada pela API local. Expiração: ${result.data.expires_in_seconds}s.`
       );
     } catch (err) {
-      setError(errorMessage(err, "Não foi possível carregar documentos."));
+      setError(errorMessage(err, "Não foi possível gerar o link de download."));
     } finally {
       setActionBusyId("");
     }
@@ -250,7 +250,7 @@ export default function DocumentsPage() {
       setActionMessage(`Job local/MVP de processamento registrado: ${result.data.job_id}.`);
       setPendingEnqueue(null);
     } catch (err) {
-      setError(errorMessage(err, "Não foi possível carregar documentos."));
+      setError(errorMessage(err, "Não foi possível enfileirar o processamento."));
     } finally {
       setActionBusyId("");
     }

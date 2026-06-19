@@ -1,5 +1,7 @@
 import type { DevSession } from "../types/auth";
 import { DEV_ROLES } from "../types/auth";
+import { LOCAL_CASES_STORAGE_KEY } from "./localCases";
+import { LOCAL_CLIENTS_STORAGE_KEY } from "./localClients";
 
 export const AUTH_STORAGE_KEY = "legaltech.dev.session.v1";
 export const AUTH_SESSION_CHANGED_EVENT = "legaltech-dev-session-changed";
@@ -116,6 +118,8 @@ export function clearStoredSession(): void {
 
   const hadStoredSession = storage.getItem(AUTH_STORAGE_KEY) !== null;
   storage.removeItem(AUTH_STORAGE_KEY);
+  storage.removeItem(LOCAL_CASES_STORAGE_KEY);
+  storage.removeItem(LOCAL_CLIENTS_STORAGE_KEY);
   if (hadStoredSession) {
     notifySessionChanged();
   }

@@ -204,16 +204,37 @@ export function getStoredLocalClients(): Client[] {
   }
 }
 
+function sanitizeClientForStorage(client: Client): Client {
+  return {
+    ...client,
+    cpf: null,
+    cnpj: null,
+    rg: null,
+    document: "",
+    documentNumber: "",
+    documentMasked: client.documentMasked || client.documentLabel || "",
+    email: client.email ? redactEmail(client.email) : ""
+  };
+}
+
+function redactEmail(email: string): string {
+  const [localPart, domain] = email.split("@");
+  if (!domain || localPart.length <= 2) return email;
+  const visible = Math.min(2, localPart.length);
+  return `${localPart.slice(0, visible)}***@${domain}`;
+}
+
 export function saveStoredLocalClient(client: Client): Client {
   const storage = getLocalStorage();
   if (!storage) return client;
 
+  const safeClient = sanitizeClientForStorage(client);
   const next = dedupeClients([
-    client,
+    safeClient,
     ...getStoredLocalClients().filter((stored) => stored.id !== client.id)
   ]);
   storage.setItem(LOCAL_CLIENTS_STORAGE_KEY, JSON.stringify(next));
-  return client;
+  return safeClient;
 }
 
 export function findStoredLocalClient(clientId: string): Client | undefined {
