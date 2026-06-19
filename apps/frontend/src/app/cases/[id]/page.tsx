@@ -8,12 +8,14 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock,
+  Download,
   FileText,
   Mail,
   Pencil,
   Phone,
   Plus,
   Shield,
+  Upload,
   Users
 } from "lucide-react";
 import type { FormEvent } from "react";
@@ -39,6 +41,15 @@ import {
   updateCaseParty
 } from "@/src/services/caseParties";
 import { getCaseAggregate } from "@/src/services/cases";
+import {
+  FINAL_REPORT_ACCEPT_ATTR,
+  FINAL_REPORT_ACCEPTED_MIME,
+  formatBytes,
+  getFinalReportDownloadUrl,
+  listFinalReports,
+  uploadFinalReport,
+  type FinalReportDocument
+} from "@/src/services/finalReports";
 import type {
   Case,
   CaseAggregate,
@@ -268,6 +279,73 @@ export default function CaseDetailPage({ params }: PageProps) {
   const [partySubmitting, setPartySubmitting] = useState(false);
   const [partySuccessMessage, setPartySuccessMessage] = useState("");
   const [showPartyForm, setShowPartyForm] = useState(false);
+  const [finalReports, setFinalReports] = useState<FinalReportDocument[]>([]);
+  const [finalReportUploading, setFinalReportUploading] = useState(false);
+  const [finalReportError, setFinalReportError] = useState("");
+  const [finalReportSuccess, setFinalReportSuccess] = useState("");
+
+  const refreshFinalReports = useCallback(async () => {
+    try {
+      const reports = await listFinalReports(id);
+      setFinalReports(reports);
+    } catch {
+      // Silently swallow — final-reports listing is non-critical for the page.
+      setFinalReports([]);
+    }
+  }, [id]);
+
+  async function handleFinalReportUpload(event: FormEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    // Validate MIME / extension
+    const ext = file.name.toLowerCase().split(".").pop() ?? "";
+    const allowedExt = ["pdf", "docx", "doc", "txt"];
+    if (
+      !FINAL_REPORT_ACCEPTED_MIME.includes(file.type) &&
+      !allowedExt.includes(ext)
+    ) {
+      setFinalReportError(
+        "Tipo de arquivo não suportado. Envie PDF, DOCX ou TXT."
+      );
+      input.value = "";
+      return;
+    }
+
+    // Size limit: 25 MB (a generous cap for legal reports)
+    const maxBytes = 25 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setFinalReportError("Arquivo excede o limite de 25 MB.");
+      input.value = "";
+      return;
+    }
+
+    setFinalReportUploading(true);
+    setFinalReportError("");
+    setFinalReportSuccess("");
+    try {
+      const doc = await uploadFinalReport(id, file);
+      setFinalReports((current) => [doc, ...current]);
+      setFinalReportSuccess(`"${doc.filename}" enviado com sucesso.`);
+    } catch (err) {
+      setFinalReportError(errorMessage(err) || "Falha ao enviar o relatório.");
+    } finally {
+      setFinalReportUploading(false);
+      input.value = "";
+    }
+  }
+
+  async function handleFinalReportDownload(documentId: string) {
+    try {
+      const url = await getFinalReportDownloadUrl(documentId);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setFinalReportError(
+        errorMessage(err) || "Não foi possível gerar o link de download."
+      );
+    }
+  }
 
   const refreshCase = useCallback(async () => {
     setLoading(true);
@@ -282,6 +360,7 @@ export default function CaseDetailPage({ params }: PageProps) {
       setFallbackReason(
         aggregateResult.source === "mock" ? aggregateResult.fallbackReason ?? "" : ""
       );
+      void refreshFinalReports();
     } catch (err) {
       setError(errorMessage(err));
       setFallbackReason("");
@@ -292,7 +371,7 @@ export default function CaseDetailPage({ params }: PageProps) {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, refreshFinalReports]);
 
   function syncCaseParties(updater: (current: CaseParty[]) => CaseParty[]) {
     setCaseParties((current) => {
@@ -936,12 +1015,97 @@ export default function CaseDetailPage({ params }: PageProps) {
 
         {/* Tab: Report */}
         {activeTab === "report" && (
-          <div className="animate-in">
+          <div className="animate-in space-y-6">
+            {/* Final report upload + list (always visible) */}
+            <Card>
+              <div className="flex items-center gap-2 mb-3">
+                <Upload size={18} style={{ color: "var(--accent)" }} />
+                <h3 className="text-sm font-bold text-[var(--text)]">
+                  Relatório final do analista
+                </h3>
+              </div>
+              <p className="text-xs text-[var(--text2)] mb-4">
+                Faça upload do relatório jurídico finalizado pelo analista.
+                Aceita PDF, DOCX ou TXT (máx. 25 MB). Ficará vinculado ao caso e
+                disponível para download posterior.
+              </p>
+
+              {finalReportError && (
+                <div className="mb-3 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                  <AlertTriangle size={14} />
+                  {finalReportError}
+                </div>
+              )}
+              {finalReportSuccess && (
+                <div className="mb-3 flex items-center gap-2 rounded-lg border border-[rgba(32,201,151,0.3)] bg-[var(--teal-dim)] px-3 py-2 text-xs text-[var(--teal)]">
+                  <CheckCircle2 size={14} />
+                  {finalReportSuccess}
+                </div>
+              )}
+
+              <label
+                className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--bd2)] bg-[var(--surf2)] px-4 py-6 text-sm font-medium text-[var(--text2)] transition hover:border-[var(--accent)] hover:bg-[var(--surf3)] ${
+                  finalReportUploading ? "pointer-events-none opacity-60" : ""
+                }`}
+              >
+                <Upload size={16} />
+                {finalReportUploading
+                  ? "Enviando..."
+                  : "Selecionar arquivo (PDF, DOCX, TXT)"}
+                <input
+                  accept={FINAL_REPORT_ACCEPT_ATTR}
+                  className="hidden"
+                  disabled={finalReportUploading}
+                  onChange={handleFinalReportUpload}
+                  type="file"
+                />
+              </label>
+
+              {finalReports.length > 0 && (
+                <div className="mt-5 space-y-2">
+                  <p className="text-[11px] uppercase tracking-wide text-[var(--text3)]">
+                    Relatórios enviados ({finalReports.length})
+                  </p>
+                  {finalReports.map((doc) => (
+                    <div
+                      className="flex items-center gap-3 rounded-lg border border-[var(--bd)] bg-[var(--surf2)] px-4 py-3"
+                      key={doc.id}
+                    >
+                      <FileText
+                        className="shrink-0 text-[var(--text2)]"
+                        size={16}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-[var(--text)]">
+                          {doc.filename}
+                        </p>
+                        <p className="text-[11px] text-[var(--text3)]">
+                          {formatBytes(doc.sizeBytes)}
+                          {doc.uploadedAt
+                            ? ` · ${formatDate(doc.uploadedAt)}`
+                            : ""}
+                        </p>
+                      </div>
+                      <button
+                        className="cv-icon-btn"
+                        onClick={() => void handleFinalReportDownload(doc.id)}
+                        title="Baixar"
+                        type="button"
+                      >
+                        <Download size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* AI-generated preliminary report */}
             {!caseReport ? (
               <EmptyState
                 description="O resumo demonstrativo ainda não está disponível. Revisão humana persistida, IA real e PDF/exportação ficam no roadmap."
                 icon={<Shield size={20} />}
-                title="Relatório não disponível"
+                title="Relatório preliminar não disponível"
               />
             ) : (
               <div className="space-y-6">
