@@ -1,6 +1,7 @@
 import {
   Activity,
   Building2,
+  DollarSign,
   Lock,
   Settings,
   Shield,
@@ -102,6 +103,13 @@ export default function AdminPage() {
               >
                 <Settings size={15} />
                 Configurações locais
+              </Link>
+              <Link
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surf)] px-3.5 py-2.5 text-sm font-medium text-[var(--text)] transition hover:border-brand-teal/40"
+                href="/admin/pricing"
+              >
+                <DollarSign size={15} />
+                Pricing
               </Link>
             </>
           }

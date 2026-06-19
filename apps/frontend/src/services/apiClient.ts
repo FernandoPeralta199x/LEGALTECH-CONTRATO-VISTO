@@ -226,6 +226,12 @@ export const apiClient = {
       method: "PATCH",
       body: JSON.stringify(body)
     }),
+  put: <T>(path: string, body: unknown, options?: ApiClientOptions) =>
+    apiRequest<T>(path, {
+      ...options,
+      method: "PUT",
+      body: JSON.stringify(body)
+    }),
   postForm: <T>(path: string, body: FormData, options?: ApiClientOptions) =>
     apiRequest<T>(path, {
       ...options,
