@@ -4,6 +4,7 @@ import {
   type Modulo,
   type Produto
 } from "../../lib/produtoConfig";
+import { formatBytes } from "@/lib/formatters";
 import type {
   Case,
   CaseAggregate,
@@ -563,12 +564,6 @@ export function mapOperationalCase(legalCase: BackendOperationalCase): Case {
     createdAt: legalCase.created_at ?? legalCase.updated_at ?? new Date().toISOString(),
     submittedAt: legalCase.created_at ?? null
   };
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function isUuidLike(value: string): boolean {

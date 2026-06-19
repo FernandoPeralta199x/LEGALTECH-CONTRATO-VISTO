@@ -30,6 +30,7 @@ import {
   type CasesLimitCheck,
   type UpdatePricingConfigPayload,
 } from "@/src/services/pricing";
+import { errorMessage } from "@/src/lib/errorMessage";
 
 type Status = "idle" | "loading" | "saving" | "success" | "error";
 
@@ -94,9 +95,7 @@ export default function AdminPricingPage() {
       setNotes(cfg.notes ?? "");
       setStatus("idle");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Erro ao carregar pricing."
-      );
+      setError(errorMessage(err, "Erro ao carregar pricing."));
       setStatus("error");
     }
   }, []);
@@ -156,7 +155,7 @@ export default function AdminPricingPage() {
       const lim = await checkCasesLimit();
       setLimitCheck(lim);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao salvar.");
+      setError(errorMessage(err, "Erro ao salvar."));
       setStatus("error");
     }
   };

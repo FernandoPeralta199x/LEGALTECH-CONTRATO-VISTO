@@ -5,6 +5,8 @@ import { SOURCE_MODE_VALUES, type SourceMode } from "../../types";
 const DEFAULT_API_PORT = "8000";
 const LOCAL_API_FALLBACK_HOST = "127.0.0.1";
 
+const DEFAULT_API_TIMEOUT_MS = 30_000;
+
 function normalizeBaseUrl(url: string): string {
   return url.trim().replace(/\/+$/, "");
 }
@@ -73,7 +75,38 @@ export const apiBaseUrl = resolveApiBaseUrl();
 
 type ApiClientOptions = RequestInit & {
   token?: string;
+  timeoutMs?: number;
 };
+
+function createTimeoutSignal(timeoutMs: number): AbortSignal {
+  if (typeof AbortController === "undefined") {
+    return undefined as unknown as AbortSignal;
+  }
+  const controller = new AbortController();
+  const id = window.setTimeout(() => controller.abort(), timeoutMs);
+  const signal = controller.signal;
+  signal.addEventListener("abort", () => window.clearTimeout(id), { once: true });
+  return signal;
+}
+
+function mergeSignals(
+  userSignal: AbortSignal | undefined,
+  timeoutSignal: AbortSignal
+): AbortSignal {
+  if (!userSignal) return timeoutSignal;
+
+  if (typeof AbortController === "undefined") {
+    return timeoutSignal;
+  }
+
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+
+  userSignal.addEventListener("abort", abort, { once: true });
+  timeoutSignal.addEventListener("abort", abort, { once: true });
+
+  return controller.signal;
+}
 
 function normalizeApiError(error: ApiError | undefined, status: number): ApiError {
   if (
@@ -158,7 +191,7 @@ export async function apiRequest<T>(
   path: string,
   options: ApiClientOptions = {}
 ): Promise<ApiSuccessResponse<T>> {
-  const { token, headers, ...requestOptions } = options;
+  const { token, timeoutMs, signal: userSignal, headers, ...requestOptions } = options;
   const requestHeaders = new Headers(headers);
   const bearerToken = token ?? getStoredToken();
 
@@ -172,14 +205,25 @@ export async function apiRequest<T>(
     requestHeaders.set("Authorization", `Bearer ${bearerToken}`);
   }
 
+  const effectiveTimeoutMs =
+    typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : DEFAULT_API_TIMEOUT_MS;
+  const timeoutSignal = createTimeoutSignal(effectiveTimeoutMs);
+  const signal = mergeSignals(userSignal ?? undefined, timeoutSignal);
+
   let response: Response;
   try {
     response = await fetch(buildUrl(path), {
       ...requestOptions,
-      headers: requestHeaders
+      headers: requestHeaders,
+      signal
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new ApiNetworkError("A API não respondeu dentro do tempo limite.");
+    }
     throw new ApiNetworkError();
+  } finally {
+    timeoutSignal.dispatchEvent(new Event("abort"));
   }
 
   let payload: ApiResponse<T>;

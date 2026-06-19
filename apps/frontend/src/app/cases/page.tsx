@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Button } from "@/components/Button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
 import { FormField, SelectInput, TextArea, TextInput } from "@/components/FormField";
@@ -30,7 +31,7 @@ import { Notification } from "@/components/Notification";
 import { PageTitle } from "@/components/PageTitle";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatDate } from "@/lib/formatters";
+import { formatDate, caseDisplayTitle } from "@/lib/formatters";
 import { errorMessage } from "@/src/lib/errorMessage";
 import { createCase, deleteCase, listCases, updateCase } from "@/src/services/cases";
 import { listClients } from "@/src/services/clients";
@@ -111,17 +112,6 @@ const emptyCaseForm: CaseForm = {
   title: ""
 };
 
-function caseDisplayTitle(legalCase: Case): string {
-  if (legalCase.title?.trim()) {
-    return legalCase.title;
-  }
-
-  const title = legalCase.metadata?.title;
-  return typeof title === "string" && title.trim()
-    ? title
-    : caseTypeLabel[legalCase.caseType] ?? legalCase.caseType;
-}
-
 function productDisplayLabel(product: ProductType): string {
   return productOptions.find((option) => option.id === product)?.label ?? product;
 }
@@ -177,6 +167,7 @@ export default function CasesPage() {
   const [editStatus, setEditStatus] = useState<CaseStatus>("draft");
   const [editSaving, setEditSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<Case | null>(null);
 
   function openEdit(legalCase: Case, event: React.MouseEvent) {
     event.preventDefault();
@@ -223,12 +214,12 @@ export default function CasesPage() {
     event.preventDefault();
     event.stopPropagation();
     if (deletingId) return;
-    const confirmed = window.confirm(
-      `Excluir o caso "${caseDisplayTitle(legalCase)}" (${legalCase.code})?\n\n` +
-        "Esta ação faz soft-delete: o caso some da listagem mas pode ser recuperado pelo admin do banco."
-    );
-    if (!confirmed) return;
+    setDeleteCandidate(legalCase);
+  }
 
+  async function confirmDelete() {
+    const legalCase = deleteCandidate;
+    if (!legalCase) return;
     setDeletingId(legalCase.id);
     setError("");
     try {
@@ -239,11 +230,16 @@ export default function CasesPage() {
           ? "Caso removido do fallback local."
           : "Caso excluído pela API."
       );
+      setDeleteCandidate(null);
     } catch (err) {
       setError(errorMessage(err, "Não foi possível excluir o caso."));
     } finally {
       setDeletingId(null);
     }
+  }
+
+  function cancelDelete() {
+    setDeleteCandidate(null);
   }
 
   const refreshCases = useCallback(async () => {
@@ -779,6 +775,21 @@ export default function CasesPage() {
             </div>
           </div>
         )}
+        <ConfirmDialog
+          cancelLabel="Cancelar"
+          confirmLabel="Excluir caso"
+          description={
+            deleteCandidate
+              ? `Excluir o caso "${caseDisplayTitle(deleteCandidate)}" (${deleteCandidate.code})? A ação faz soft-delete: o caso some da listagem, mas pode ser recuperado pelo admin do banco.`
+              : ""
+          }
+          loading={Boolean(deletingId)}
+          onCancel={cancelDelete}
+          onConfirm={() => void confirmDelete()}
+          open={Boolean(deleteCandidate)}
+          title="Confirmar exclusão"
+          variant="danger"
+        />
       </AppLayout>
     </AuthGuard>
   );

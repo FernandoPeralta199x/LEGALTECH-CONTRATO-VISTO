@@ -34,8 +34,8 @@ import { Notification } from "@/components/Notification";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Timeline } from "@/components/Timeline";
-import { formatDate } from "@/lib/formatters";
-import { ApiClientError } from "@/src/services/apiClient";
+import { formatBytes, caseDisplayTitle, formatDate } from "@/lib/formatters";
+import { errorMessage } from "@/src/lib/errorMessage";
 import {
   createCaseParty,
   updateCaseParty
@@ -44,7 +44,6 @@ import { getCaseAggregate } from "@/src/services/cases";
 import {
   FINAL_REPORT_ACCEPT_ATTR,
   FINAL_REPORT_ACCEPTED_MIME,
-  formatBytes,
   getFinalReportDownloadUrl,
   listFinalReports,
   uploadFinalReport,
@@ -112,25 +111,6 @@ const emptyPartyForm: CasePartyCreate = {
 
 type PageProps = { params: Promise<{ id: string }> };
 type PartyFormErrors = Partial<Record<keyof CasePartyCreate, string>>;
-
-function errorMessage(error: unknown): string {
-  if (error instanceof ApiClientError) {
-    return `${error.code}: ${error.message}`;
-  }
-
-  return error instanceof Error ? error.message : "Não foi possível carregar o caso.";
-}
-
-function caseDisplayTitle(legalCase: Case): string {
-  if (legalCase.title?.trim()) {
-    return legalCase.title;
-  }
-
-  const title = legalCase.metadata?.title;
-  return typeof title === "string" && title.trim()
-    ? title
-    : caseTypeLabel[legalCase.caseType] ?? legalCase.caseType;
-}
 
 function sourceModeLabel(value: unknown): string {
   if (typeof value !== "string" || !value) {
@@ -288,8 +268,8 @@ export default function CaseDetailPage({ params }: PageProps) {
     try {
       const reports = await listFinalReports(id);
       setFinalReports(reports);
-    } catch {
-      // Silently swallow — final-reports listing is non-critical for the page.
+    } catch (err) {
+      setFinalReportError(errorMessage(err, "Não foi possível carregar relatórios finais."));
       setFinalReports([]);
     }
   }, [id]);
@@ -329,7 +309,7 @@ export default function CaseDetailPage({ params }: PageProps) {
       setFinalReports((current) => [doc, ...current]);
       setFinalReportSuccess(`"${doc.filename}" enviado com sucesso.`);
     } catch (err) {
-      setFinalReportError(errorMessage(err) || "Falha ao enviar o relatório.");
+      setFinalReportError(errorMessage(err, "Falha ao enviar o relatório."));
     } finally {
       setFinalReportUploading(false);
       input.value = "";
@@ -342,7 +322,7 @@ export default function CaseDetailPage({ params }: PageProps) {
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (err) {
       setFinalReportError(
-        errorMessage(err) || "Não foi possível gerar o link de download."
+        errorMessage(err, "Não foi possível gerar o link de download.")
       );
     }
   }

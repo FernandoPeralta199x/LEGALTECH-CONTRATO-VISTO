@@ -1,3 +1,4 @@
+import { formatBytes } from "@/lib/formatters";
 import type { Document, DocumentCreate, DocumentUpdate } from "../../types";
 import { apiClient, resolveApiBaseUrl } from "./apiClient";
 import { fallbackReason, shouldUseMockFallback, type ServiceResult } from "./fallback";
@@ -43,18 +44,6 @@ const AUTHORITATIVE_METADATA_FIELDS = new Set([
   "storage_key",
   "uploaded_by"
 ]);
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-
-  if (bytes < 1024 * 1024) {
-    return `${Math.round(bytes / 1024)} KB`;
-  }
-
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
 
 function caseCodeFromId(caseId: string): string {
   if (caseId.toLowerCase().startsWith("case-")) {

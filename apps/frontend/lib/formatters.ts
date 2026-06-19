@@ -56,3 +56,31 @@ export function formatStatusLabel(
 
   return labels[value] ?? value;
 }
+
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+const caseTypeLabel: Record<string, string> = {
+  compra_venda: "Compra e Venda",
+  confidencialidade: "Confidencialidade (NDA)",
+  contract_analysis: "Análise Contratual",
+  due_diligence: "Due Diligence",
+  locacao: "Locação",
+  outro: "Outro",
+  parceria: "Parceria",
+  prestacao_servicos: "Prestação de Serviços"
+};
+
+export function caseDisplayTitle(legalCase: { title?: string | null; metadata?: { title?: unknown }; caseType: string }): string {
+  if (legalCase.title?.trim()) {
+    return legalCase.title.trim();
+  }
+
+  const title = legalCase.metadata?.title;
+  return typeof title === "string" && title.trim()
+    ? title.trim()
+    : caseTypeLabel[legalCase.caseType] ?? legalCase.caseType;
+}

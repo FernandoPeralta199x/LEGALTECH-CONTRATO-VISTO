@@ -4,6 +4,9 @@
  */
 
 import { apiClient } from "@/src/services/apiClient";
+import { formatBytes } from "@/lib/formatters";
+
+export { formatBytes };
 
 export const FINAL_REPORT_KIND = "final_report";
 
@@ -103,10 +106,4 @@ export async function getFinalReportDownloadUrl(
     `/api/v1/documents/${documentId}/download-url`
   );
   return res.data.url;
-}
-
-export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
