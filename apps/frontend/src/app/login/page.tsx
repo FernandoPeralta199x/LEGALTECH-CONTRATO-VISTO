@@ -5,7 +5,6 @@ import {
   Check,
   Eye,
   EyeOff,
-  KeyRound,
   Lock,
   Mail,
   ShieldCheck,
@@ -78,7 +77,9 @@ function LoginContent() {
 
       await saveDevSession({
         email: result.user.email,
-        role: (DEV_ROLES.includes(result.user.role as DevRole) ? result.user.role : "client") as DevRole,
+        role: (DEV_ROLES.includes(result.user.role as DevRole)
+          ? result.user.role
+          : "client") as DevRole,
         token: result.access_token
       });
 
@@ -155,7 +156,9 @@ function LoginContent() {
 
       await saveDevSession({
         email: result.user.email,
-        role: (DEV_ROLES.includes(result.user.role as DevRole) ? result.user.role : "client") as DevRole,
+        role: (DEV_ROLES.includes(result.user.role as DevRole)
+          ? result.user.role
+          : "client") as DevRole,
         token: result.access_token
       });
 
@@ -312,15 +315,15 @@ function LoginContent() {
           <form className="space-y-4" onSubmit={handleVerify}>
             <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-200">
               Cadastro criado para <strong>{registeredEmail}</strong>. Em produção o
-              token seria enviado por e-mail; no ambiente local ele está
-              preenchido abaixo.
+              link seria enviado por e-mail; no ambiente local digite qualquer
+              token não vazio para confirmar.
             </div>
 
-            <Field label="Token de confirmação" icon={<KeyRound size={15} />}>
+            <Field label="Token de confirmação" icon={<Lock size={15} />}>
               <input
                 className={inputClass}
                 onChange={(event) => setVerificationToken(event.target.value)}
-                placeholder="Cole o token de confirmação"
+                placeholder="Digite o token de confirmação"
                 required
                 type="text"
                 value={verificationToken}
@@ -399,7 +402,10 @@ function LoginContent() {
 
             <div className="space-y-1.5">
               {passwordRequirements.map(([key, label]) => {
-                const met = passwordValidation.requirements[key as keyof typeof passwordValidation.requirements];
+                const met =
+                  passwordValidation.requirements[
+                    key as keyof typeof passwordValidation.requirements
+                  ];
                 return (
                   <div className="flex items-center gap-2 text-xs" key={key}>
                     <span
@@ -439,11 +445,10 @@ function LoginContent() {
         )}
 
         <div className="mt-6 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-[11px] leading-5 text-amber-200">
-          <strong className="text-amber-100">Acesso local por JWT dev:</strong>{" "}
-          e-mail/senha autenticam neste MVP local. O token é salvo apenas no
-          navegador e enviado como{" "}
-          <code className="rounded bg-amber-950/50 px-1 py-0.5">Authorization: Bearer</code>{" "}
-          nas chamadas para a API.
+          <strong className="text-amber-100">Ambiente local:</strong>{" "}
+          o acesso é feito por e-mail e senha. A confirmação de cadastro é
+          simulada localmente; em produção o link será enviado por e-mail. O
+          token de sessão fica apenas no navegador.
         </div>
       </section>
     </main>

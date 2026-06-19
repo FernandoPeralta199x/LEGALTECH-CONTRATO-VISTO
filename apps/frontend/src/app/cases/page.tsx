@@ -564,7 +564,7 @@ export default function CasesPage() {
                 Tentar novamente
               </Button>
             }
-            description="A listagem de casos não pôde ser carregada pela API local. Se for 401/403, gere um JWT dev com permissões adequadas."
+            description="A listagem de casos não pôde ser carregada pela API local. Se for 401/403, faça login novamente com uma conta autorizada."
             details={error}
           />
         ) : filteredCases.length === 0 ? (

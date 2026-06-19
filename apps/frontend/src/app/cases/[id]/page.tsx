@@ -497,7 +497,7 @@ export default function CaseDetailPage({ params }: PageProps) {
                 Voltar para casos
               </Button>
             }
-            description="Não foi possível carregar o detalhe do caso. Verifique o token dev, permissões e se a API local está disponível."
+            description="Não foi possível carregar o detalhe do caso. Verifique se está logado com permissões adequadas e se a API local está disponível."
             details={error || "Caso não encontrado."}
             title="Caso não encontrado"
           />
