@@ -34,7 +34,7 @@ class UserRepository:
         name: str,
         password_hash: str,
         role: str,
-        organization_id: str,
+        organization_id: str | None = None,
         verification_token_hash: str | None = None,
         verification_token_expires_at: datetime | None = None,
     ) -> User:
@@ -54,11 +54,18 @@ class UserRepository:
         self._db.flush()
         return user
 
-    def mark_email_verified(self, user: User) -> User:
+    def mark_email_verified(
+        self,
+        user: User,
+        *,
+        organization_id: str | None = None,
+    ) -> User:
         user.status = "active"
         user.email_verified_at = datetime.now(UTC)
         user.verification_token_hash = None
         user.verification_token_expires_at = None
+        if organization_id is not None:
+            user.organization_id = organization_id
         self._db.flush()
         return user
 

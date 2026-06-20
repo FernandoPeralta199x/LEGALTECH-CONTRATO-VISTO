@@ -115,7 +115,6 @@ class AuthService:
         if existing:
             raise EmailAlreadyRegisteredError("Este e-mail já está cadastrado.")
 
-        organization_id = self._repository.get_default_organization_id()
         password_hash = self._hash_password(password)
         verification_token = self._generate_verification_token()
         token_hash = self._hash_verification_token(verification_token)
@@ -128,7 +127,6 @@ class AuthService:
             name=name,
             password_hash=password_hash,
             role=role,
-            organization_id=organization_id,
             verification_token_hash=token_hash,
             verification_token_expires_at=token_expires_at,
         )
@@ -176,11 +174,21 @@ class AuthService:
         if not hmac.compare_digest(expected_hash, user.verification_token_hash):
             raise InvalidVerificationTokenError("Token de verificação inválido.")
 
+        # Local dev only: assign the seeded default organization so the user can
+        # immediately use the platform. In production this step must be replaced
+        # by admin approval or invite-based tenant assignment.
+        organization_id = self._repository.get_default_organization_id()
+
         if user.status != "active" or not user.email_verified_at:
-            self._repository.mark_email_verified(user)
+            self._repository.mark_email_verified(
+                user,
+                organization_id=organization_id,
+            )
         else:
-            # Token already used: invalidate it to prevent replay.
-            self._repository.mark_email_verified(user)
+            self._repository.mark_email_verified(
+                user,
+                organization_id=organization_id,
+            )
 
         access_token = self._issue_dev_jwt(user)
         return self._build_token_response(user, access_token)
