@@ -1,5 +1,5 @@
 import { getStoredToken } from "../lib/authStorage";
-import type { ApiError, ApiResponse, ApiSuccessResponse } from "../../types/api";
+import type { ApiError, ApiErrorResponse, ApiResponse, ApiSuccessResponse } from "../../types/api";
 import { SOURCE_MODE_VALUES, type SourceMode } from "../../types";
 
 const DEFAULT_API_PORT = "8000";
@@ -83,9 +83,13 @@ function createTimeoutSignal(timeoutMs: number): AbortSignal {
     return undefined as unknown as AbortSignal;
   }
   const controller = new AbortController();
-  const id = window.setTimeout(() => controller.abort(), timeoutMs);
+  const setTimeoutFn =
+    typeof window !== "undefined" ? window.setTimeout.bind(window) : globalThis.setTimeout.bind(globalThis);
+  const clearTimeoutFn =
+    typeof window !== "undefined" ? window.clearTimeout.bind(window) : globalThis.clearTimeout.bind(globalThis);
+  const id = setTimeoutFn(() => controller.abort(), timeoutMs) as ReturnType<typeof setTimeout>;
   const signal = controller.signal;
-  signal.addEventListener("abort", () => window.clearTimeout(id), { once: true });
+  signal.addEventListener("abort", () => clearTimeoutFn(id), { once: true });
   return signal;
 }
 
@@ -132,20 +136,21 @@ function isSourceMode(value: unknown): value is SourceMode {
 }
 
 function normalizeApiSuccess<T>(
-  payload: ApiResponse<T> | Partial<ApiSuccessResponse<T>>
+  payload: ApiResponse<T> | { data: T } | unknown
 ): ApiSuccessResponse<T> {
-  const message = (payload as { message?: unknown }).message;
+  const raw = payload as Partial<ApiSuccessResponse<T>> & { data?: T };
+  const message = raw.message;
 
   return {
     success: true,
-    data: payload.data as T,
+    data: raw.data as T,
     error: null,
     request_id:
-      typeof payload.request_id === "string" ? payload.request_id : "frontend-local",
-    source_mode: isSourceMode(payload.source_mode) ? payload.source_mode : "real",
+      typeof raw.request_id === "string" ? raw.request_id : "frontend-local",
+    source_mode: isSourceMode(raw.source_mode) ? raw.source_mode : "real",
     timestamp:
-      typeof payload.timestamp === "string"
-        ? payload.timestamp
+      typeof raw.timestamp === "string"
+        ? raw.timestamp
         : new Date().toISOString(),
     ...(typeof message === "string" ? { message } : {})
   };
@@ -226,9 +231,9 @@ export async function apiRequest<T>(
     timeoutSignal.dispatchEvent(new Event("abort"));
   }
 
-  let payload: ApiResponse<T>;
+  let payload: ApiResponse<T> | { data: T };
   try {
-    payload = (await response.json()) as ApiResponse<T>;
+    payload = (await response.json()) as ApiResponse<T> | { data: T };
   } catch {
     throw new ApiClientError(
       {
@@ -240,16 +245,30 @@ export async function apiRequest<T>(
     );
   }
 
-  if (!response.ok || !payload.success) {
-    const error = payload.success
-      ? {
+  const hasSuccessField = typeof (payload as ApiResponse<T>).success === "boolean";
+  const rawData = (payload as { data?: T }).data;
+
+  if (!response.ok || (hasSuccessField && !(payload as ApiResponse<T>).success)) {
+    const error = hasSuccessField
+      ? (payload as ApiErrorResponse).error
+      : {
           code: "HTTP_ERROR",
           message: `Erro HTTP ${response.status}.`,
           details: {}
-        }
-      : payload.error;
+        };
 
     throw new ApiClientError(error, response.status);
+  }
+
+  if (!hasSuccessField && rawData !== undefined) {
+    return normalizeApiSuccess({
+      success: true,
+      data: rawData,
+      error: null,
+      request_id: "frontend-local",
+      source_mode: "real",
+      timestamp: new Date().toISOString()
+    });
   }
 
   return normalizeApiSuccess(payload);
