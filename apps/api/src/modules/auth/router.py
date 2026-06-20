@@ -18,9 +18,9 @@ from src.modules.auth.service import (
     EmailAlreadyRegisteredError,
     EmailNotVerifiedError,
     InvalidCredentialsError,
-    InvalidRoleError,
     InvalidVerificationTokenError,
     SelfRegistrationBlockedRoleError,
+    VerificationExpiredError,
     get_auth_service,
 )
 from src.modules.common.responses import success_response
@@ -81,7 +81,7 @@ def verify_email(
             token=payload.token,
         )
         return success_response(result)
-    except InvalidVerificationTokenError as exc:
+    except (InvalidVerificationTokenError, VerificationExpiredError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),

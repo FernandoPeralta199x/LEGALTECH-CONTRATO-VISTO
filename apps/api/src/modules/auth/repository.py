@@ -35,6 +35,8 @@ class UserRepository:
         password_hash: str,
         role: str,
         organization_id: str,
+        verification_token_hash: str | None = None,
+        verification_token_expires_at: datetime | None = None,
     ) -> User:
         user = User(
             id=uuid4(),
@@ -44,6 +46,8 @@ class UserRepository:
             status="pending_verification",
             password_hash=password_hash,
             organization_id=organization_id,
+            verification_token_hash=verification_token_hash,
+            verification_token_expires_at=verification_token_expires_at,
             metadata_json={"source": "local_registration"},
         )
         self._db.add(user)
@@ -53,6 +57,8 @@ class UserRepository:
     def mark_email_verified(self, user: User) -> User:
         user.status = "active"
         user.email_verified_at = datetime.now(UTC)
+        user.verification_token_hash = None
+        user.verification_token_expires_at = None
         self._db.flush()
         return user
 

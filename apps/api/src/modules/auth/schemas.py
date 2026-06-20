@@ -79,6 +79,19 @@ class AuthTokenResponse(BaseModel):
 class RegisterResponse(BaseModel):
     data: dict[str, Any]
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "data": {
+                    "user_id": "...",
+                    "email": "user@example.com",
+                    "status": "pending_verification",
+                    "message": "Cadastro criado. Verifique sua caixa de entrada.",
+                }
+            }
+        }
+    }
+
 
 class VerifyEmailResponse(BaseModel):
     data: AuthTokenResponse

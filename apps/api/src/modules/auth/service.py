@@ -40,11 +40,11 @@ class InvalidVerificationTokenError(AuthServiceError):
     pass
 
 
-class InvalidRoleError(AuthServiceError):
+class SelfRegistrationBlockedRoleError(AuthServiceError):
     pass
 
 
-class SelfRegistrationBlockedRoleError(AuthServiceError):
+class VerificationExpiredError(AuthServiceError):
     pass
 
 
@@ -85,6 +85,9 @@ class AuthService:
     def _generate_verification_token(self) -> str:
         return secrets.token_urlsafe(32)
 
+    def _hash_verification_token(self, token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
     def _issue_dev_jwt(self, user: User) -> str:
         return create_dev_jwt(
             settings=self._settings,
@@ -115,6 +118,10 @@ class AuthService:
         organization_id = self._repository.get_default_organization_id()
         password_hash = self._hash_password(password)
         verification_token = self._generate_verification_token()
+        token_hash = self._hash_verification_token(verification_token)
+        token_expires_at = datetime.now(UTC) + timedelta(
+            seconds=DEFAULT_TOKEN_TTL_SECONDS
+        )
 
         user = self._repository.create_pending_user(
             email=email,
@@ -122,20 +129,19 @@ class AuthService:
             password_hash=password_hash,
             role=role,
             organization_id=organization_id,
+            verification_token_hash=token_hash,
+            verification_token_expires_at=token_expires_at,
         )
 
-        # In production, send this token via e-mail.
-        # For local MVP we return it so the frontend can simulate the flow.
         self._send_verification_email(user, verification_token)
 
         return {
             "user_id": str(user.id),
             "email": user.email,
             "status": user.status,
-            "verification_token": verification_token,
             "message": (
-                "Cadastro criado. No ambiente local o token de confirmação "
-                "é exibido abaixo; em produção ele seria enviado por e-mail."
+                "Cadastro criado. Verifique sua caixa de entrada para confirmar "
+                "o e-mail. No ambiente local, consulte os logs do servidor."
             ),
         }
 
@@ -145,14 +151,14 @@ class AuthService:
 
         logger = logging.getLogger(__name__)
         logger.info(
-            "[EMAIL-MOCK] Verificação para %s: token=%s",
+            "[EMAIL-MOCK] Verificação para %s (user_id=%s). "
+            "Token nao e logado por seguranca. Envie o token abaixo manualmente "
+            "ou consulte a camada de entrega futura.",
             user.email,
-            token,
+            user.id,
         )
 
     def verify_email(self, *, email: str, token: str) -> dict:
-        # In a real implementation the token would be stored/validated.
-        # For local MVP, any non-empty token activates the account.
         if not token or len(token) < 8:
             raise InvalidVerificationTokenError("Token de verificação inválido.")
 
@@ -160,11 +166,22 @@ class AuthService:
         if not user:
             raise ResourceNotFoundError(resource="user", identifier=email)
 
-        if user.status == "active" and user.email_verified_at:
-            access_token = self._issue_dev_jwt(user)
-            return self._build_token_response(user, access_token)
+        if not user.verification_token_hash:
+            raise InvalidVerificationTokenError("Token de verificação inválido.")
 
-        self._repository.mark_email_verified(user)
+        if user.verification_token_expires_at and datetime.now(UTC) > user.verification_token_expires_at:
+            raise VerificationExpiredError("Token de verificação expirado.")
+
+        expected_hash = self._hash_verification_token(token)
+        if not hmac.compare_digest(expected_hash, user.verification_token_hash):
+            raise InvalidVerificationTokenError("Token de verificação inválido.")
+
+        if user.status != "active" or not user.email_verified_at:
+            self._repository.mark_email_verified(user)
+        else:
+            # Token already used: invalidate it to prevent replay.
+            self._repository.mark_email_verified(user)
+
         access_token = self._issue_dev_jwt(user)
         return self._build_token_response(user, access_token)
 
