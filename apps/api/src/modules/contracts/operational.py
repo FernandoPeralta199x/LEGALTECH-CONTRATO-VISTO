@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, Protocol
 
 from src.modules.contracts.mock_repositories import (
     InMemoryOperationalStore,
@@ -13,11 +14,55 @@ from src.modules.contracts.mock_repositories import (
     MockTimelineRepository,
     MockTriageRepository,
 )
+from src.modules.contracts.schemas import (
+    CreateRequestPayloadSchema,
+    LegalRequestSchema,
+    PaginatedResponse,
+)
+
+
+class RequestRepositoryProtocol(Protocol):
+    def create(
+        self,
+        *,
+        organization_id: Any,
+        created_by: Any,
+        payload: CreateRequestPayloadSchema,
+    ) -> LegalRequestSchema:
+        ...
+
+    def get(
+        self,
+        *,
+        organization_id: Any,
+        request_id: Any,
+    ) -> LegalRequestSchema | None:
+        ...
+
+    def list(
+        self,
+        *,
+        organization_id: Any,
+        page: int = 1,
+        page_size: int = 20,
+        status: str | None = None,
+        product_type: str | None = None,
+        q: str | None = None,
+    ) -> PaginatedResponse:
+        ...
+
+    def get_case(
+        self,
+        *,
+        organization_id: Any,
+        request_id: Any,
+    ) -> Any | None:
+        ...
 
 
 @dataclass(frozen=True)
 class OperationalRepositories:
-    requests: MockRequestRepository
+    requests: RequestRepositoryProtocol
     cases: MockCaseRepository
     parties: MockPartyRepository
     documents: MockDocumentRepository
@@ -40,10 +85,11 @@ def reset_operational_store() -> None:
 
 def build_operational_repositories(
     store: InMemoryOperationalStore | None = None,
+    requests: RequestRepositoryProtocol | None = None,
 ) -> OperationalRepositories:
     scoped_store = store or get_operational_store()
     return OperationalRepositories(
-        requests=MockRequestRepository(scoped_store),
+        requests=requests or MockRequestRepository(scoped_store),
         cases=MockCaseRepository(scoped_store),
         parties=MockPartyRepository(scoped_store),
         documents=MockDocumentRepository(scoped_store),

@@ -95,10 +95,29 @@ class RequestService:
             organization_id=organization_uuid,
             request_id=request_id,
         )
-        case = self.get_request_case(
+        case = self.repositories.requests.get_case(
             organization_id=organization_uuid,
             request_id=request.id,
         )
+
+        if case is None:
+            # Case still lives in the in-memory store until PERSIST-03.
+            return {
+                **request.model_dump(mode="json"),
+                "request_id": str(request.id),
+                "request_status": request.status.value,
+                "case_id": None,
+                "case_code": None,
+                "case_status": None,
+                "product_type": request.product_type,
+                "product_label": request.product_label,
+                "documents_count": 0,
+                "parties_count": 0,
+                "triage_modules_count": 0,
+                "timeline_events_count": 0,
+                "source_mode": request.source_mode.value,
+            }
+
         aggregate = self.repositories.cases.get_aggregate(
             organization_id=organization_uuid,
             case_id=case.id,
