@@ -2,6 +2,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
+from src.modules.roles.permissions import SELF_REGISTRATION_ROLES
+
 
 EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
@@ -25,6 +27,13 @@ class RegisterRequest(BaseModel):
     @classmethod
     def _check_email(cls, value: str) -> str:
         return _validate_email(value)
+
+    @field_validator("role")
+    @classmethod
+    def _check_role(cls, value: str) -> str:
+        if value not in SELF_REGISTRATION_ROLES:
+            raise ValueError(f"Papel '{value}' não é permitido para cadastro público.")
+        return value
 
     @field_validator("password")
     @classmethod

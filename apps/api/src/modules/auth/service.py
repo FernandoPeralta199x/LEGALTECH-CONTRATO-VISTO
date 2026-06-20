@@ -10,13 +10,14 @@ from src.core.config import Settings, get_settings
 from src.modules.admin.dev_jwt import create_dev_jwt
 from src.modules.auth.repository import UserRepository
 from src.modules.common.exceptions import ResourceNotFoundError
-from src.modules.roles.permissions import BASE_ROLES
+from src.modules.roles.permissions import SELF_REGISTRATION_ROLES
 
 if TYPE_CHECKING:
     from src.models.user import User
 
 
 DEFAULT_TOKEN_TTL_SECONDS = 60 * 60  # 1 hour verification window
+DEFAULT_SELF_REGISTRATION_ROLE = "client"
 
 
 class AuthServiceError(Exception):
@@ -40,6 +41,10 @@ class InvalidVerificationTokenError(AuthServiceError):
 
 
 class InvalidRoleError(AuthServiceError):
+    pass
+
+
+class SelfRegistrationBlockedRoleError(AuthServiceError):
     pass
 
 
@@ -96,10 +101,12 @@ class AuthService:
         email: str,
         name: str,
         password: str,
-        role: str = "client",
+        role: str = DEFAULT_SELF_REGISTRATION_ROLE,
     ) -> dict:
-        if role not in BASE_ROLES:
-            raise InvalidRoleError(f"Papel '{role}' não é permitido para cadastro.")
+        if role not in SELF_REGISTRATION_ROLES:
+            raise SelfRegistrationBlockedRoleError(
+                f"Papel '{role}' não é permitido para cadastro público."
+            )
 
         existing = self._repository.get_by_email(email)
         if existing:

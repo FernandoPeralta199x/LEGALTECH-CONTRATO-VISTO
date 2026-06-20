@@ -20,6 +20,7 @@ from src.modules.auth.service import (
     InvalidCredentialsError,
     InvalidRoleError,
     InvalidVerificationTokenError,
+    SelfRegistrationBlockedRoleError,
     get_auth_service,
 )
 from src.modules.common.responses import success_response
@@ -61,7 +62,7 @@ def register(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
-    except InvalidRoleError as exc:
+    except (InvalidRoleError, SelfRegistrationBlockedRoleError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),

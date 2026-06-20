@@ -227,3 +227,7 @@ BASE_ROLE_PERMISSIONS: Final[dict[str, frozenset[str]]] = {
 }
 
 BASE_ROLES: Final[tuple[str, ...]] = tuple(BASE_ROLE_PERMISSIONS.keys())
+
+# Roles allowed in public self-registration. Privileged roles must be assigned
+# by an existing admin/owner through invitation or internal seed.
+SELF_REGISTRATION_ROLES: Final[tuple[str, ...]] = ("client", "analyst")
