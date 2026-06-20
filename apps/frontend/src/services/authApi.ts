@@ -34,8 +34,8 @@ export interface RegisterResult {
   user_id: string;
   email: string;
   status: string;
-  verification_token: string;
   message: string;
+  verification_token?: string;
 }
 
 export async function login(payload: LoginPayload): Promise<AuthTokenResult> {

@@ -122,11 +122,11 @@ function LoginContent() {
       });
 
       setRegisteredEmail(result.email);
-      setVerificationToken(result.verification_token || "");
+      setVerificationToken("");
       setShowVerification(true);
       setToast({
         message:
-          "Cadastro criado. Confirme o e-mail para ativar a conta. No ambiente local o token aparece abaixo.",
+          "Cadastro criado. Digite o token de confirmação enviado por e-mail. No ambiente local, o token está disponível no log do servidor.",
         tone: "success"
       });
     } catch (err) {
@@ -313,8 +313,8 @@ function LoginContent() {
           <form className="space-y-4" onSubmit={handleVerify}>
             <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-200">
               Cadastro criado para <strong>{registeredEmail}</strong>. Em produção o
-              link seria enviado por e-mail; no ambiente local digite qualquer
-              token não vazio para confirmar.
+              link seria enviado por e-mail; no ambiente local o token está
+              disponível no log do servidor.
             </div>
 
             <Field label="Token de confirmação" icon={<Lock size={15} />}>
