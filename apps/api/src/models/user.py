@@ -40,6 +40,14 @@ class User(OrganizationScopedMixin, UUIDPrimaryKeyMixin, TimestampMixin, Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    verification_token_hash: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    verification_token_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     metadata_json: Mapped[dict] = mapped_column(
         "metadata",
         JSONB,
