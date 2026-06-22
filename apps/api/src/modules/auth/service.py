@@ -179,16 +179,10 @@ class AuthService:
         # by admin approval or invite-based tenant assignment.
         organization_id = self._repository.get_default_organization_id()
 
-        if user.status != "active" or not user.email_verified_at:
-            self._repository.mark_email_verified(
-                user,
-                organization_id=organization_id,
-            )
-        else:
-            self._repository.mark_email_verified(
-                user,
-                organization_id=organization_id,
-            )
+        self._repository.mark_email_verified(
+            user,
+            organization_id=organization_id,
+        )
 
         access_token = self._issue_dev_jwt(user)
         return self._build_token_response(user, access_token)
