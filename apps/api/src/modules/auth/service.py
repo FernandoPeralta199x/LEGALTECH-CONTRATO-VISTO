@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+from src.adapters.email import create_email_sender
 from src.core.config import Settings, get_settings
 from src.modules.admin.dev_jwt import create_dev_jwt
 from src.modules.auth.repository import UserRepository
@@ -57,6 +59,11 @@ class AuthService:
     ) -> None:
         self._repository = repository
         self._settings = settings or get_settings()
+        self._email_sender = create_email_sender(
+            self._settings.email_backend,
+            sender=self._settings.email_sender,
+            region=self._settings.aws_region,
+        )
 
     def _hash_password(self, password: str) -> str:
         """Hash password using PBKDF2. NOT for production."""
@@ -97,6 +104,10 @@ class AuthService:
             role=user.role,
             expires_minutes=480,
         )
+
+    def _build_verification_link(self, email: str, token: str) -> str:
+        base = self._settings.frontend_base_url.rstrip("/")
+        return f"{base}/verify-email?email={email}&token={token}"
 
     def register(
         self,
@@ -144,16 +155,26 @@ class AuthService:
         }
 
     def _send_verification_email(self, user: User, token: str) -> None:
-        """Adapter placeholder for email delivery."""
-        import logging
-
-        logger = logging.getLogger(__name__)
-        logger.info(
-            "[EMAIL-MOCK] Verificação para %s (user_id=%s). "
-            "Token nao e logado por seguranca. Envie o token abaixo manualmente "
-            "ou consulte a camada de entrega futura.",
-            user.email,
-            user.id,
+        link = self._build_verification_link(user.email, token)
+        subject = "Confirme seu e-mail — Contrato Visto"
+        text_body = (
+            f"Olá, {user.name}\n\n"
+            f"Clique no link para confirmar seu e-mail:\n{link}\n\n"
+            f"Este link expira em 1 hora.\n"
+        )
+        html_body = (
+            f"<p>Olá, {user.name}</p>"
+            f"<p>Clique no link abaixo para confirmar seu e-mail:</p>"
+            f'<p><a href="{link}">Confirmar e-mail</a></p>'
+            f"<p>Este link expira em 1 hora.</p>"
+        )
+        asyncio.run(
+            self._email_sender.send(
+                recipient=user.email,
+                subject=subject,
+                text_body=text_body,
+                html_body=html_body,
+            )
         )
 
     def verify_email(self, *, email: str, token: str) -> dict:

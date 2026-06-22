@@ -75,6 +75,7 @@ test("createLocalCaseFromWizard builds a minimal local case without sensitive pa
         analise_contratual_ia: true,
         escavador: false,
         ia_deepseek: true,
+        reuniao_equipe: false,
         revisao_humana: false,
         serasa_procon: false,
         targetdata: false

@@ -183,6 +183,15 @@ class Settings(BaseSettings):
         default=None, alias="AI_ANALYSIS_API_KEY",
     )
 
+    # --- E-mail adapter ---
+    email_backend: Literal["mock", "ses"] = Field(
+        default="mock", alias="EMAIL_BACKEND",
+    )
+    email_sender: str | None = Field(default=None, alias="EMAIL_SENDER")
+    frontend_base_url: str = Field(
+        default="http://localhost:3000", alias="FRONTEND_BASE_URL",
+    )
+
     secrets_external_apis_name: str | None = Field(
         default=None,
         alias="SECRETS_EXTERNAL_APIS_NAME",

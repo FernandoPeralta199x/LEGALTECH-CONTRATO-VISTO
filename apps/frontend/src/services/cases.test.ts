@@ -663,6 +663,7 @@ test("submitWizardRequest sends operational wizard payload without organization_
       analise_contratual_ia: true,
       escavador: false,
       ia_deepseek: true,
+      reuniao_equipe: false,
       revisao_humana: false,
       serasa_procon: false,
       targetdata: false
@@ -723,6 +724,7 @@ test("submitWizardRequest uses explicit local fallback only when API is unavaila
         analise_contratual_ia: true,
         escavador: false,
         ia_deepseek: true,
+        reuniao_equipe: false,
         revisao_humana: false,
         serasa_procon: false,
         targetdata: false
