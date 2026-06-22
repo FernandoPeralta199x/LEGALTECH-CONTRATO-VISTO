@@ -977,17 +977,6 @@ export default function CaseDetailPage({ params }: PageProps) {
                     )}
                   </Card>
                 ))}
-                {providerResults.length > 0 && (
-                  <div className="sm:col-span-2">
-                    <Card title="Resultados de providers">
-                      <div className="space-y-3">
-                        {providerResults.map((result) => (
-                          <ProviderResultRow result={result} key={result.id} />
-                        ))}
-                      </div>
-                    </Card>
-                  </div>
-                )}
               </div>
             )}
           </div>

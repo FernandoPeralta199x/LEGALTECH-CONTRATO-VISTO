@@ -7,6 +7,13 @@ export function formatCurrency(value: number): string {
   }).format(value);
 }
 
+export function formatCents(cents: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(cents / 100);
+}
+
 export function formatDateTime(value: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",

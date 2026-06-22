@@ -1,13 +1,13 @@
 "use client";
 
-import { Bell, LogOut, Menu, Search, X } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-
+import { NotificationBell } from "@/components/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/cn";
 import { clearStoredSession } from "@/src/lib/authStorage";
 import { useDevSession } from "@/src/lib/useDevSession";
+import { LogOut, Menu, Search, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 type HeaderProps = { onMenuClick?: () => void };
 
@@ -110,17 +110,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <ThemeToggle className="hidden sm:flex" />
 
           {/* Notifications */}
-          <button
-            aria-label="Notificações"
-            className={cn(
-              "relative flex h-9 w-9 items-center justify-center rounded-lg",
-              "min-h-11 min-w-11 text-[var(--text2)] hover:bg-[var(--surf3)] hover:text-[var(--text)]",
-              "transition-colors duration-fast"
-            )}
-          >
-            <Bell size={17} />
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--teal)] ring-2 ring-[var(--surf)]" />
-          </button>
+          <NotificationBell />
 
           {session ? (
             <div className="flex items-center gap-2 pl-1">

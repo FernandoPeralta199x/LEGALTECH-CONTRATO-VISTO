@@ -182,7 +182,7 @@ function LoginContent() {
   }
 
   return (
-    <main className="cv-login-shell relative flex items-start justify-center overflow-hidden px-4 py-10">
+    <main className="cv-login-shell relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
       <div className="pointer-events-none absolute inset-0 opacity-45 noise" />
       <Link
         className="absolute left-5 top-5 z-10 flex items-center gap-2 text-xs font-semibold text-[var(--text2)] transition hover:text-[var(--teal)]"

@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { WizardActions, WizardShell } from "@/components/wizard";
 import { Notification } from "@/components/Notification";
+import { PricingCatalogProvider } from "@/components/pricing/PricingCatalogContext";
 import {
   MATRIZ,
   type Modulo,
@@ -140,44 +141,46 @@ export function NewCaseWizard() {
   }
 
   return (
-    <WizardShell
-      backHref="/cases"
-      description="Preencha as informações do pedido. Ao concluir, o backend operacional cria o request, o caso e os recursos locais vinculados ao mesmo case_id."
-      step={step}
-      title={STEP_TITLES[step]}
-      totalSteps={TOTAL_STEPS}
-    >
-      {submitNotice && (
-        <Notification compact tone={submitNotice.tone} title={submitNotice.title}>
-          {submitNotice.description}
-        </Notification>
-      )}
-
-      {step === 1 && <PartiesStep onChange={setParties} parties={parties} />}
-      {step === 2 && <ContractStep arquivo={arquivo} onChange={setArquivo} />}
-      {step === 3 && <ProductStep onChange={handleProductChange} produto={produto} />}
-      {step === 4 && produto && (
-        <ModulesStep onChange={setModulos} produto={produto} state={modulos} />
-      )}
-      {step === 5 && produto && (
-        <ReviewStep
-          arquivo={arquivo}
-          modulos={modulos}
-          parties={parties}
-          produto={produto}
-        />
-      )}
-
-      <WizardActions
-        canAdvance={canAdvance}
-        onBack={() => setStep((s) => Math.max(1, s - 1))}
-        onNext={() => setStep((s) => Math.min(TOTAL_STEPS, s + 1))}
-        onSubmit={handleSubmit}
-        submitLabel="Registrar pedido"
+    <PricingCatalogProvider>
+      <WizardShell
+        backHref="/cases"
+        description="Preencha as informações do pedido. Ao concluir, o backend operacional cria o request, o caso e os recursos locais vinculados ao mesmo case_id."
         step={step}
-        submitting={submitting}
+        title={STEP_TITLES[step]}
         totalSteps={TOTAL_STEPS}
-      />
-    </WizardShell>
+      >
+        {submitNotice && (
+          <Notification compact tone={submitNotice.tone} title={submitNotice.title}>
+            {submitNotice.description}
+          </Notification>
+        )}
+
+        {step === 1 && <PartiesStep onChange={setParties} parties={parties} />}
+        {step === 2 && <ContractStep arquivo={arquivo} onChange={setArquivo} />}
+        {step === 3 && <ProductStep onChange={handleProductChange} produto={produto} />}
+        {step === 4 && produto && (
+          <ModulesStep onChange={setModulos} produto={produto} state={modulos} />
+        )}
+        {step === 5 && produto && (
+          <ReviewStep
+            arquivo={arquivo}
+            modulos={modulos}
+            parties={parties}
+            produto={produto}
+          />
+        )}
+
+        <WizardActions
+          canAdvance={canAdvance}
+          onBack={() => setStep((s) => Math.max(1, s - 1))}
+          onNext={() => setStep((s) => Math.min(TOTAL_STEPS, s + 1))}
+          onSubmit={handleSubmit}
+          submitLabel="Registrar pedido"
+          step={step}
+          submitting={submitting}
+          totalSteps={TOTAL_STEPS}
+        />
+      </WizardShell>
+    </PricingCatalogProvider>
   );
 }

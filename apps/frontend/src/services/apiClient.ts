@@ -55,9 +55,27 @@ function rewriteLoopbackForLanAccess(
   }
 }
 
+function isLocalhost(hostname: string | undefined): boolean {
+  if (!hostname) return false;
+  const h = hostname.toLowerCase();
+  return h === "localhost" || h === "127.0.0.1" || h === "::1" || h === "[::1]";
+}
+
 export function resolveApiBaseUrl(): string {
   const runtimeLocation = getRuntimeLocation();
   const configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+  // In the browser, prefer relative paths for local development so requests go
+  // through the Next.js rewrites (/api/v1/* -> backend). This avoids CORS and
+  // ensures the dev/prod proxy config is respected. Only use an absolute URL
+  // when explicitly pointed at a remote API.
+  if (typeof window !== "undefined" && window.location) {
+    if (configuredBaseUrl && !isLocalhost(new URL(configuredBaseUrl).hostname)) {
+      return rewriteLoopbackForLanAccess(configuredBaseUrl, runtimeLocation);
+    }
+    return "";
+  }
+
   if (configuredBaseUrl) {
     return rewriteLoopbackForLanAccess(configuredBaseUrl, runtimeLocation);
   }
@@ -184,8 +202,12 @@ function buildUrl(path: string): string {
     return path;
   }
 
+  const base = resolveApiBaseUrl();
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  return `${resolveApiBaseUrl()}${normalizedPath}`;
+  if (!base) {
+    return normalizedPath;
+  }
+  return `${base}${normalizedPath}`;
 }
 
 function shouldSetJsonContentType(body: BodyInit | null | undefined): boolean {
@@ -220,7 +242,8 @@ export async function apiRequest<T>(
     response = await fetch(buildUrl(path), {
       ...requestOptions,
       headers: requestHeaders,
-      signal
+      signal,
+      cache: requestOptions.cache ?? "no-store"
     });
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {

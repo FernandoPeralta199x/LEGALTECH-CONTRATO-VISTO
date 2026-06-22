@@ -1,13 +1,10 @@
 """Canonical pricing catalog for the local MVP.
 
-This module is the backend source of truth for product/module prices and the
-product x module matrix. It mirrors the frontend ``produtoConfig.ts`` so the
-wizard can stop hardcoding prices and read them from the API instead.
-
-Prices are stored in cents. No value here changes the user-visible pricing:
-Commit A only moves the source of truth from the frontend constants to the
-backend. DB-backed administrable pricing (history, overrides, audit) is planned
-for 28P-B / FASE 2 and is intentionally out of scope for this module.
+This module is the backend source of truth for module prices and the
+product x module matrix.  Products no longer have a fixed base price; their
+price is derived from the modules marked as ``required`` for each product.
+The single editable price table in the admin UI therefore controls every
+visible price.
 """
 
 from __future__ import annotations
@@ -18,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 PRICING_CURRENCY: Final[str] = "BRL"
-PRICING_VERSION: Final[str] = "2026-06-17"
+PRICING_VERSION: Final[str] = "2026-06-21"
 
 # SLA adjustments (in hours) mirrored from ``estimarPrazoHoras`` in produtoConfig.ts.
 SLA_HUMAN_REVIEW_EXTRA_HOURS: Final[int] = 24
@@ -42,6 +39,7 @@ ModuleCode = Literal[
     "serasa_procon",
     "analise_contratual_ia",
     "revisao_humana",
+    "reuniao_equipe",
 ]
 
 
@@ -59,7 +57,7 @@ class ProductMeta(BaseModel):
 
 
 class ModuleMeta(BaseModel):
-    """Catalog metadata for an optional add-on module."""
+    """Catalog metadata for an add-on module (also used for product bundles)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -78,66 +76,6 @@ class ModuleMatrixConfig(BaseModel):
     recommended: bool = False
     required: bool = False
     locked: bool = False
-
-
-PRODUCTS: Final[dict[str, ProductMeta]] = {
-    "dados_partes": ProductMeta(
-        code="dados_partes",
-        title="Dados das partes",
-        description=(
-            "Simulação local dos dados das partes para preparar futuras consultas."
-        ),
-        includes=(
-            "Critério cadastral simulado",
-            "Histórico jurídico futuro",
-            "Reputação pública futura",
-        ),
-        base_price_cents=18700,
-        sla_hours=24,
-    ),
-    "consulta_objeto": ProductMeta(
-        code="consulta_objeto",
-        title="Consulta do objeto",
-        description=(
-            "Composição local do objeto contratual e critérios de análise futura."
-        ),
-        includes=(
-            "Critério simulado do objeto",
-            "Pesquisa pública futura",
-            "Resumo por IA planejada",
-        ),
-        base_price_cents=14900,
-        sla_hours=24,
-    ),
-    "analise_contratual": ProductMeta(
-        code="analise_contratual",
-        title="Análise contratual",
-        description=(
-            "Simulação local de critérios para leitura contratual e riscos."
-        ),
-        includes=(
-            "IA planejada",
-            "Critérios de risco simulados",
-            "Mapeamento simulado de obrigações",
-        ),
-        base_price_cents=28900,
-        sla_hours=48,
-    ),
-    "reuniao_equipe": ProductMeta(
-        code="reuniao_equipe",
-        title="Reunião com advogado",
-        description=(
-            "Preparação local para uma futura etapa com profissional jurídico."
-        ),
-        includes=(
-            "Critérios prévios",
-            "Reunião planejada",
-            "Roteiro para parecer futuro",
-        ),
-        base_price_cents=49000,
-        sla_hours=72,
-    ),
-}
 
 
 MODULES: Final[dict[str, ModuleMeta]] = {
@@ -193,6 +131,14 @@ MODULES: Final[dict[str, ModuleMeta]] = {
         ),
         price_cents=12900,
     ),
+    "reuniao_equipe": ModuleMeta(
+        code="reuniao_equipe",
+        title="Reunião com advogado",
+        description=(
+            "Preparação local para uma futura etapa com profissional jurídico."
+        ),
+        price_cents=49000,
+    ),
 }
 
 
@@ -204,6 +150,7 @@ MATRIX: Final[dict[str, dict[str, ModuleMatrixConfig]]] = {
         "serasa_procon": ModuleMatrixConfig(default=False, recommended=True),
         "analise_contratual_ia": ModuleMatrixConfig(default=False),
         "revisao_humana": ModuleMatrixConfig(default=False),
+        "reuniao_equipe": ModuleMatrixConfig(default=False),
     },
     "consulta_objeto": {
         "escavador": ModuleMatrixConfig(default=False),
@@ -212,6 +159,7 @@ MATRIX: Final[dict[str, dict[str, ModuleMatrixConfig]]] = {
         "serasa_procon": ModuleMatrixConfig(default=False),
         "analise_contratual_ia": ModuleMatrixConfig(default=False),
         "revisao_humana": ModuleMatrixConfig(default=False),
+        "reuniao_equipe": ModuleMatrixConfig(default=False),
     },
     "analise_contratual": {
         "escavador": ModuleMatrixConfig(default=False),
@@ -222,6 +170,7 @@ MATRIX: Final[dict[str, dict[str, ModuleMatrixConfig]]] = {
             default=True, required=True, locked=True
         ),
         "revisao_humana": ModuleMatrixConfig(default=True, recommended=True),
+        "reuniao_equipe": ModuleMatrixConfig(default=False),
     },
     "reuniao_equipe": {
         "escavador": ModuleMatrixConfig(default=False),
@@ -230,5 +179,82 @@ MATRIX: Final[dict[str, dict[str, ModuleMatrixConfig]]] = {
         "serasa_procon": ModuleMatrixConfig(default=False),
         "analise_contratual_ia": ModuleMatrixConfig(default=False, recommended=True),
         "revisao_humana": ModuleMatrixConfig(default=True, required=True, locked=True),
+        "reuniao_equipe": ModuleMatrixConfig(default=True, required=True, locked=True),
     },
+}
+
+
+def compute_product_base_price(
+    product_code: str,
+    modules: dict[str, ModuleMeta] | None = None,
+    matrix: dict[str, dict[str, ModuleMatrixConfig]] | None = None,
+) -> int:
+    """Return the product base price as the sum of its required modules."""
+    mods = MODULES if modules is None else modules
+    mx = MATRIX if matrix is None else matrix
+    product_matrix = mx.get(product_code, {})
+    return sum(
+        mods[module_code].price_cents
+        for module_code, config in product_matrix.items()
+        if config.required and module_code in mods
+    )
+
+
+PRODUCTS: Final[dict[str, ProductMeta]] = {
+    "dados_partes": ProductMeta(
+        code="dados_partes",
+        title="Dados das partes",
+        description=(
+            "Simulação local dos dados das partes para preparar futuras consultas."
+        ),
+        includes=(
+            "Critério cadastral simulado",
+            "Histórico jurídico futuro",
+            "Reputação pública futura",
+        ),
+        base_price_cents=compute_product_base_price("dados_partes"),
+        sla_hours=24,
+    ),
+    "consulta_objeto": ProductMeta(
+        code="consulta_objeto",
+        title="Consulta do objeto",
+        description=(
+            "Composição local do objeto contratual e critérios de análise futura."
+        ),
+        includes=(
+            "Critério simulado do objeto",
+            "Pesquisa pública futura",
+            "Resumo por IA planejada",
+        ),
+        base_price_cents=compute_product_base_price("consulta_objeto"),
+        sla_hours=24,
+    ),
+    "analise_contratual": ProductMeta(
+        code="analise_contratual",
+        title="Análise contratual",
+        description=(
+            "Simulação local de critérios para leitura contratual e riscos."
+        ),
+        includes=(
+            "IA planejada",
+            "Critérios de risco simulados",
+            "Mapeamento simulado de obrigações",
+        ),
+        base_price_cents=compute_product_base_price("analise_contratual"),
+        sla_hours=48,
+    ),
+    "reuniao_equipe": ProductMeta(
+        code="reuniao_equipe",
+        title="Reunião com advogado",
+        description=(
+            "Preparação local para uma futura etapa com profissional jurídico."
+        ),
+        includes=(
+            "Critérios prévios",
+            "Reunião planejada",
+            "Roteiro para parecer futuro",
+        ),
+        base_price_cents=compute_product_base_price("reuniao_equipe"),
+        sla_hours=72,
+    ),
 }

@@ -7,9 +7,7 @@ from src.core.rbac import require_permission
 from src.core.tenant import TenantContext
 from src.db.session import get_db
 from src.modules.common.responses import success_response
-from src.modules.contracts.operational import build_operational_repositories
 from src.modules.contracts.schemas import CreateRequestPayloadSchema
-from src.modules.requests.repository import RequestRepository
 from src.modules.requests.service import RequestService
 
 
@@ -17,11 +15,7 @@ router = APIRouter(prefix="/api/v1/requests", tags=["requests"])
 
 
 def get_request_service(db = Depends(get_db)) -> RequestService:
-    return RequestService(
-        repositories=build_operational_repositories(
-            requests=RequestRepository(db),
-        ),
-    )
+    return RequestService(db=db)
 
 
 def dump_model(model) -> dict:

@@ -4,8 +4,12 @@ import { FileText, Info } from "lucide-react";
 import type { ReactNode } from "react";
 
 import {
+  usePricingLookup,
+  usePricingMatrix,
+} from "@/components/pricing/PricingCatalogContext";
+import {
+  computeProductBasePrice,
   estimarPrazoHoras,
-  estimarValor,
   MATRIZ,
   MODULOS,
   PAPEIS,
@@ -43,8 +47,26 @@ export function ReviewStep({ parties, arquivo, produto, modulos }: ReviewStepPro
   const matriz = MATRIZ[produto];
   const ativos = (Object.keys(modulos) as Modulo[]).filter((m) => modulos[m]);
   const inativos = (Object.keys(matriz) as Modulo[]).filter((m) => !modulos[m]);
+  const { products, modules } = usePricingLookup();
+  const matrix = usePricingMatrix();
 
-  const valor = estimarValor(produto, ativos);
+  const isRequired = (modulo: Modulo): boolean => {
+    const remote = matrix[produto]?.[modulo];
+    if (remote) return remote.required === true || remote.obrigatorio === true;
+    return matriz[modulo]?.obrigatorio === true;
+  };
+
+  const productCents = products.get(PRODUTOS[produto].code)?.base_price_cents
+    ?? computeProductBasePrice(produto);
+
+  const valor = ativos.reduce((sum, modulo) => {
+    // Módulos obrigatórios já estão incluídos no preço base do produto.
+    if (isRequired(modulo)) return sum;
+    const code = MODULOS[modulo].code;
+    const price = modules.get(code)?.price_cents ?? MODULOS[modulo].precoCents;
+    return sum + price;
+  }, productCents);
+
   const prazo = estimarPrazoHoras(produto, ativos);
 
   return (

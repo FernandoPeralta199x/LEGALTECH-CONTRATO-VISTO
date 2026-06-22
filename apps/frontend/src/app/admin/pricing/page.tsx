@@ -1,30 +1,30 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  DollarSign,
   Save,
   AlertTriangle,
   CheckCircle,
   Settings,
-  Package,
   Layers,
   Shield,
+  RotateCcw,
+  Info,
 } from "lucide-react";
 
 import { AuthGuard } from "@/components/AuthGuard";
 import { AppLayout } from "@/components/AppLayout";
 import { PageTitle } from "@/components/PageTitle";
 import { Card } from "@/components/Card";
+import { CurrencyInput, centsToReaisLabel } from "@/components/CurrencyInput";
 
 import {
   getPricingCatalog,
   getPricingConfig,
   updatePricingConfig,
   checkCasesLimit,
-  formatCents,
   type PricingCatalog,
   type PricingConfig,
   type CasesLimitCheck,
@@ -32,7 +32,23 @@ import {
 } from "@/src/services/pricing";
 import { errorMessage } from "@/src/lib/errorMessage";
 
+const TOAST_MS = 4000;
+
 type Status = "idle" | "loading" | "saving" | "success" | "error";
+
+function useToast() {
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(
+    null
+  );
+
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(() => setMessage(null), TOAST_MS);
+    return () => clearTimeout(t);
+  }, [message]);
+
+  return { message, setMessage };
+}
 
 export default function AdminPricingPage() {
   const router = useRouter();
@@ -41,23 +57,18 @@ export default function AdminPricingPage() {
   const [config, setConfig] = useState<PricingConfig | null>(null);
   const [limitCheck, setLimitCheck] = useState<CasesLimitCheck | null>(null);
   const [status, setStatus] = useState<Status>("idle");
-  const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const { message, setMessage } = useToast();
 
   // Form state
-  const [casesLimit, setCasesLimit] = useState<string>("");
+  const [casesLimit, setCasesLimit] = useState<number | null>(null);
   const [unlimitedCases, setUnlimitedCases] = useState(true);
-  const [productOverrides, setProductOverrides] = useState<
-    Record<string, string>
-  >({});
   const [moduleOverrides, setModuleOverrides] = useState<
-    Record<string, string>
+    Record<string, number | null>
   >({});
   const [notes, setNotes] = useState("");
 
   const loadData = useCallback(async () => {
     setStatus("loading");
-    setError(null);
     try {
       const [cat, cfg, lim] = await Promise.all([
         getPricingCatalog(),
@@ -68,94 +79,99 @@ export default function AdminPricingPage() {
       setConfig(cfg);
       setLimitCheck(lim);
 
-      // Initialize form state from config
-      if (cfg.cases_limit === null) {
-        setUnlimitedCases(true);
-        setCasesLimit("");
-      } else {
-        setUnlimitedCases(false);
-        setCasesLimit(String(cfg.cases_limit));
-      }
-      setProductOverrides(
-        Object.fromEntries(
-          Object.entries(cfg.product_overrides).map(([k, v]) => [
-            k,
-            String(v.base_price_cents),
-          ])
-        )
-      );
+      const unlimited = cfg.cases_limit === null;
+      setUnlimitedCases(unlimited);
+      setCasesLimit(unlimited ? null : cfg.cases_limit);
+
       setModuleOverrides(
         Object.fromEntries(
-          Object.entries(cfg.module_overrides).map(([k, v]) => [
-            k,
-            String(v.price_cents),
-          ])
+          Object.entries(cfg.module_overrides).map(([k, v]) => [k, v.price_cents])
         )
       );
       setNotes(cfg.notes ?? "");
       setStatus("idle");
     } catch (err) {
-      setError(errorMessage(err, "Erro ao carregar pricing."));
+      setMessage({
+        text: errorMessage(err, "API local indisponível. Verifique se o backend e o PostgreSQL estão rodando e se você está logado."),
+        type: "error",
+      });
       setStatus("error");
     }
-  }, []);
+  }, [setMessage]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  const hasChanges = useMemo(() => {
+    if (!config) return false;
+    const initialUnlimited = config.cases_limit === null;
+    if (initialUnlimited !== unlimitedCases) return true;
+    if (!unlimitedCases && casesLimit !== config.cases_limit) return true;
+
+    const initialModules = Object.fromEntries(
+      Object.entries(config.module_overrides).map(([k, v]) => [k, v.price_cents])
+    );
+
+    if (notes.trim() !== (config.notes ?? "").trim()) return true;
+
+    const allModuleKeys = new Set([
+      ...Object.keys(initialModules),
+      ...Object.keys(moduleOverrides),
+    ]);
+    for (const key of allModuleKeys) {
+      if ((initialModules[key] ?? null) !== (moduleOverrides[key] ?? null)) return true;
+    }
+
+    return false;
+  }, [config, unlimitedCases, casesLimit, moduleOverrides, notes]);
+
+  const handleReset = () => {
+    if (!config) return;
+    const unlimited = config.cases_limit === null;
+    setUnlimitedCases(unlimited);
+    setCasesLimit(unlimited ? null : config.cases_limit);
+    setModuleOverrides(
+      Object.fromEntries(
+        Object.entries(config.module_overrides).map(([k, v]) => [k, v.price_cents])
+      )
+    );
+    setNotes(config.notes ?? "");
+  };
+
   const handleSave = async () => {
     setStatus("saving");
-    setError(null);
-    setSuccessMsg(null);
+    setMessage(null);
     try {
-      const payload: UpdatePricingConfigPayload = {};
+      const payload: UpdatePricingConfigPayload = {
+        cases_limit: unlimitedCases ? null : casesLimit ?? null,
+      };
 
-      // cases_limit
-      payload.cases_limit = unlimitedCases
-        ? null
-        : parseInt(casesLimit, 10) || null;
-
-      // product overrides (only changed ones)
-      const prodOv: Record<string, { base_price_cents: number }> = {};
-      for (const [code, val] of Object.entries(productOverrides)) {
-        const cents = parseInt(val, 10);
-        if (!isNaN(cents) && cents >= 0) {
-          prodOv[code] = { base_price_cents: cents };
-        }
-      }
-      if (Object.keys(prodOv).length > 0) {
-        payload.product_overrides = prodOv;
-      }
-
-      // module overrides (only changed ones)
       const modOv: Record<string, { price_cents: number }> = {};
-      for (const [code, val] of Object.entries(moduleOverrides)) {
-        const cents = parseInt(val, 10);
-        if (!isNaN(cents) && cents >= 0) {
+      for (const [code, cents] of Object.entries(moduleOverrides)) {
+        if (cents !== null && !Number.isNaN(cents) && cents >= 0) {
           modOv[code] = { price_cents: cents };
         }
       }
-      if (Object.keys(modOv).length > 0) {
-        payload.module_overrides = modOv;
-      }
+      payload.module_overrides = modOv;
 
-      if (notes.trim()) {
-        payload.notes = notes.trim();
-      }
+      payload.notes = notes.trim() || null;
 
       const updated = await updatePricingConfig(payload);
       setConfig(updated);
-      setSuccessMsg(
-        `Configuração salva (versão ${updated.version}).`
-      );
-      setStatus("success");
+      setMessage({
+        text: `Configuração salva (versão ${updated.version}).`,
+        type: "success",
+      });
+      setStatus("idle");
 
-      // Refresh limit check
       const lim = await checkCasesLimit();
       setLimitCheck(lim);
     } catch (err) {
-      setError(errorMessage(err, "Erro ao salvar."));
+      setMessage({
+        text: errorMessage(err, "Erro ao salvar."),
+        type: "error",
+      });
       setStatus("error");
     }
   };
@@ -166,12 +182,12 @@ export default function AdminPricingPage() {
   return (
     <AuthGuard>
       <AppLayout>
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="mx-auto max-w-5xl space-y-6">
           {/* Header */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/admin")}
-              className="p-2 rounded-lg hover:opacity-80 transition-opacity"
+              className="rounded-lg p-2 transition-opacity hover:opacity-80"
               style={{ color: "var(--text2)" }}
             >
               <ArrowLeft size={20} />
@@ -183,37 +199,34 @@ export default function AdminPricingPage() {
             />
           </div>
 
-          {/* Feedback messages */}
-          {error && (
+          {/* Toast */}
+          {message && (
             <div
-              className="flex items-center gap-2 p-3 rounded-lg text-sm"
+              className="flex items-center gap-2 rounded-lg p-3 text-sm"
               style={{
-                background: "rgba(239, 68, 68, 0.1)",
-                color: "#ef4444",
-                border: "1px solid rgba(239, 68, 68, 0.2)",
+                background:
+                  message.type === "error"
+                    ? "rgba(239, 68, 68, 0.1)"
+                    : "rgba(34, 197, 94, 0.1)",
+                color: message.type === "error" ? "#ef4444" : "#22c55e",
+                border:
+                  message.type === "error"
+                    ? "1px solid rgba(239, 68, 68, 0.2)"
+                    : "1px solid rgba(34, 197, 94, 0.2)",
               }}
             >
-              <AlertTriangle size={16} />
-              {error}
-            </div>
-          )}
-          {successMsg && (
-            <div
-              className="flex items-center gap-2 p-3 rounded-lg text-sm"
-              style={{
-                background: "rgba(34, 197, 94, 0.1)",
-                color: "#22c55e",
-                border: "1px solid rgba(34, 197, 94, 0.2)",
-              }}
-            >
-              <CheckCircle size={16} />
-              {successMsg}
+              {message.type === "error" ? (
+                <AlertTriangle size={16} />
+              ) : (
+                <CheckCircle size={16} />
+              )}
+              {message.text}
             </div>
           )}
 
           {isLoading ? (
             <div
-              className="text-center py-12 text-sm"
+              className="py-12 text-center text-sm"
               style={{ color: "var(--text2)" }}
             >
               Carregando...
@@ -221,54 +234,54 @@ export default function AdminPricingPage() {
           ) : (
             <>
               {/* Cases Limit + Status */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <Card>
-                  <div className="flex items-center gap-2 mb-4">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <Card title="Limite de Casos">
+                  <div className="mb-4 flex items-center gap-2">
                     <Shield size={18} style={{ color: "var(--accent)" }} />
-                    <h3
-                      className="font-semibold"
-                      style={{ color: "var(--text)" }}
-                    >
+                    <h3 className="font-semibold" style={{ color: "var(--text)" }}>
                       Limite de Casos
                     </h3>
                   </div>
                   <div className="space-y-3">
-                    <label className="flex items-center gap-2 text-sm">
+                    <label className="flex cursor-pointer items-center gap-2 text-sm">
                       <input
                         type="checkbox"
                         checked={unlimitedCases}
                         onChange={(e) => setUnlimitedCases(e.target.checked)}
-                        className="rounded"
+                        className="rounded border-[var(--bd)] bg-[var(--surf2)] text-[var(--accent)]"
                       />
                       <span style={{ color: "var(--text2)" }}>
                         Ilimitado (sem restrição)
                       </span>
                     </label>
                     {!unlimitedCases && (
-                      <input
-                        type="number"
-                        min={1}
-                        value={casesLimit}
-                        onChange={(e) => setCasesLimit(e.target.value)}
-                        placeholder="Ex: 100"
-                        className="w-full px-3 py-2 rounded-lg text-sm"
-                        style={{
-                          background: "var(--surf2)",
-                          border: "1px solid var(--bd)",
-                          color: "var(--text)",
-                        }}
-                      />
+                      <div className="space-y-1">
+                        <label
+                          className="text-xs"
+                          style={{ color: "var(--text3)" }}
+                        >
+                          Quantidade máxima de casos ativos
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={casesLimit ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setCasesLimit(v === "" ? null : parseInt(v, 10));
+                          }}
+                          placeholder="Ex: 100"
+                          className="w-full rounded-lg border border-[var(--bd)] bg-[var(--surf2)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                        />
+                      </div>
                     )}
                   </div>
                 </Card>
 
-                <Card>
-                  <div className="flex items-center gap-2 mb-4">
+                <Card title="Status Atual">
+                  <div className="mb-4 flex items-center gap-2">
                     <Settings size={18} style={{ color: "var(--accent)" }} />
-                    <h3
-                      className="font-semibold"
-                      style={{ color: "var(--text)" }}
-                    >
+                    <h3 className="font-semibold" style={{ color: "var(--text)" }}>
                       Status Atual
                     </h3>
                   </div>
@@ -276,9 +289,7 @@ export default function AdminPricingPage() {
                     {limitCheck && (
                       <>
                         <div className="flex justify-between">
-                          <span style={{ color: "var(--text2)" }}>
-                            Casos ativos
-                          </span>
+                          <span style={{ color: "var(--text2)" }}>Casos ativos</span>
                           <span style={{ color: "var(--text)" }}>
                             {limitCheck.active_cases_count}
                           </span>
@@ -290,14 +301,10 @@ export default function AdminPricingPage() {
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span style={{ color: "var(--text2)" }}>
-                            Pode criar
-                          </span>
+                          <span style={{ color: "var(--text2)" }}>Pode criar</span>
                           <span
                             style={{
-                              color: limitCheck.allowed
-                                ? "#22c55e"
-                                : "#ef4444",
+                              color: limitCheck.allowed ? "#22c55e" : "#ef4444",
                             }}
                           >
                             {limitCheck.allowed ? "Sim" : "Não"}
@@ -307,187 +314,91 @@ export default function AdminPricingPage() {
                     )}
                     {config && (
                       <div
-                        className="flex justify-between pt-2 mt-2"
+                        className="mt-2 flex justify-between pt-2"
                         style={{ borderTop: "1px solid var(--bd)" }}
                       >
                         <span style={{ color: "var(--text2)" }}>Versão</span>
-                        <span style={{ color: "var(--text)" }}>
-                          {config.version}
-                        </span>
+                        <span style={{ color: "var(--text)" }}>{config.version}</span>
                       </div>
                     )}
                   </div>
                 </Card>
               </div>
 
-              {/* Product Overrides */}
-              {catalog && (
-                <Card>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Package size={18} style={{ color: "var(--accent)" }} />
-                    <h3
-                      className="font-semibold"
-                      style={{ color: "var(--text)" }}
-                    >
-                      Preços de Produtos
-                    </h3>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full"
-                      style={{
-                        background: "var(--surf2)",
-                        color: "var(--text2)",
-                      }}
-                    >
-                      Deixe vazio para usar o padrão
-                    </span>
-                  </div>
-                  <div className="space-y-3">
-                    {catalog.products.map((product) => {
-                      const hasOverride =
-                        productOverrides[product.code] !== undefined &&
-                        productOverrides[product.code] !== "";
-                      return (
-                        <div
-                          key={product.code}
-                          className="flex items-center gap-4 p-3 rounded-lg"
-                          style={{
-                            background: "var(--surf2)",
-                            border: "1px solid var(--bd)",
-                          }}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div
-                              className="font-medium text-sm"
-                              style={{ color: "var(--text)" }}
-                            >
-                              {product.title}
-                            </div>
-                            <div
-                              className="text-xs"
-                              style={{ color: "var(--text2)" }}
-                            >
-                              Padrão: {formatCents(product.base_price_cents)}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <DollarSign
-                              size={14}
-                              style={{ color: "var(--text3)" }}
-                            />
-                            <input
-                              type="number"
-                              min={0}
-                              value={productOverrides[product.code] ?? ""}
-                              onChange={(e) =>
-                                setProductOverrides((prev) => ({
-                                  ...prev,
-                                  [product.code]: e.target.value,
-                                }))
-                              }
-                              placeholder={String(product.base_price_cents)}
-                              className="w-32 px-2 py-1 rounded text-sm text-right"
-                              style={{
-                                background: "var(--surf3)",
-                                border: "1px solid var(--bd)",
-                                color: "var(--text)",
-                              }}
-                            />
-                            <span
-                              className="text-xs w-6"
-                              style={{
-                                color: hasOverride ? "#f59e0b" : "var(--text3)",
-                              }}
-                            >
-                              {hasOverride ? "¢" : ""}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Card>
-              )}
-
               {/* Module Overrides */}
               {catalog && (
-                <Card>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Layers size={18} style={{ color: "var(--accent)" }} />
-                    <h3
-                      className="font-semibold"
-                      style={{ color: "var(--text)" }}
-                    >
+                <Card
+                  title={
+                    <span className="flex items-center gap-2">
+                      <Layers size={18} style={{ color: "var(--accent)" }} />
                       Preços de Módulos
-                    </h3>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full"
-                      style={{
-                        background: "var(--surf2)",
-                        color: "var(--text2)",
-                      }}
-                    >
-                      Deixe vazio para usar o padrão
                     </span>
-                  </div>
+                  }
+                  description="Deixe vazio para usar o padrão. Os preços dos produtos são calculados automaticamente a partir dos módulos obrigatórios."
+                  actions={
+                    <span
+                      className="inline-flex items-center gap-1 text-xs"
+                      style={{ color: "var(--text3)" }}
+                    >
+                      <Info size={13} /> Valores em reais
+                    </span>
+                  }
+                >
                   <div className="space-y-3">
                     {catalog.modules.map((mod) => {
-                      const hasOverride =
-                        moduleOverrides[mod.code] !== undefined &&
-                        moduleOverrides[mod.code] !== "";
+                      const overrideCents = moduleOverrides[mod.code] ?? null;
+                      const hasOverride = overrideCents !== null;
                       return (
                         <div
                           key={mod.code}
-                          className="flex items-center gap-4 p-3 rounded-lg"
-                          style={{
-                            background: "var(--surf2)",
-                            border: "1px solid var(--bd)",
-                          }}
+                          className="flex flex-col gap-3 rounded-lg border border-[var(--bd)] bg-[var(--surf2)] p-3 sm:flex-row sm:items-center"
                         >
-                          <div className="flex-1 min-w-0">
+                          <div className="min-w-0 flex-1">
                             <div
-                              className="font-medium text-sm"
+                              className="text-sm font-medium"
                               style={{ color: "var(--text)" }}
                             >
                               {mod.title}
                             </div>
                             <div
-                              className="text-xs"
+                              className="mt-0.5 flex items-center gap-2 text-xs"
                               style={{ color: "var(--text2)" }}
                             >
-                              Padrão: {formatCents(mod.price_cents)}
+                              <span>Padrão: {centsToReaisLabel(mod.price_cents)}</span>
+                              {hasOverride && (
+                                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                                  override
+                                </span>
+                              )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <DollarSign
-                              size={14}
-                              style={{ color: "var(--text3)" }}
-                            />
-                            <input
-                              type="number"
-                              min={0}
-                              value={moduleOverrides[mod.code] ?? ""}
-                              onChange={(e) =>
+                          <div className="flex items-center gap-3">
+                            <CurrencyInput
+                              value={overrideCents}
+                              onChange={(cents) =>
                                 setModuleOverrides((prev) => ({
                                   ...prev,
-                                  [mod.code]: e.target.value,
+                                  [mod.code]: cents,
                                 }))
                               }
-                              placeholder={String(mod.price_cents)}
-                              className="w-32 px-2 py-1 rounded text-sm text-right"
-                              style={{
-                                background: "var(--surf3)",
-                                border: "1px solid var(--bd)",
-                                color: "var(--text)",
-                              }}
+                              placeholder={centsToReaisLabel(mod.price_cents)}
+                              className="w-40"
+                              aria-label={`Preço override para ${mod.title}`}
                             />
-                            <span
-                              className="text-xs w-6"
-                              style={{
-                                color: hasOverride ? "#f59e0b" : "var(--text3)",
-                              }}
-                            >
-                              {hasOverride ? "¢" : ""}
-                            </span>
+                            {hasOverride && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setModuleOverrides((prev) => ({
+                                    ...prev,
+                                    [mod.code]: null,
+                                  }))
+                                }
+                                className="text-xs text-[var(--text3)] underline hover:text-[var(--text)]"
+                              >
+                                usar padrão
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -497,28 +408,17 @@ export default function AdminPricingPage() {
               )}
 
               {/* Notes */}
-              <Card>
-                <h3
-                  className="font-semibold mb-3"
-                  style={{ color: "var(--text)" }}
-                >
-                  Observações
-                </h3>
+              <Card title="Observações">
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   maxLength={500}
                   rows={3}
                   placeholder="Notas internas sobre a configuração de pricing..."
-                  className="w-full px-3 py-2 rounded-lg text-sm resize-none"
-                  style={{
-                    background: "var(--surf2)",
-                    border: "1px solid var(--bd)",
-                    color: "var(--text)",
-                  }}
+                  className="w-full resize-none rounded-lg border border-[var(--bd)] bg-[var(--surf2)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
                 />
                 <div
-                  className="text-xs mt-1 text-right"
+                  className="mt-1 text-right text-xs"
                   style={{ color: "var(--text3)" }}
                 >
                   {notes.length}/500
@@ -526,15 +426,23 @@ export default function AdminPricingPage() {
               </Card>
 
               {/* Save */}
-              <div className="flex justify-end">
+              <div className="flex items-center justify-end gap-3">
+                {hasChanges && (
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    disabled={isSaving}
+                    className="flex items-center gap-2 rounded-lg border border-[var(--bd)] bg-[var(--surf)] px-4 py-2.5 text-sm font-medium text-[var(--text)] transition hover:border-[var(--accent)]/40 disabled:opacity-50"
+                  >
+                    <RotateCcw size={15} />
+                    Descartar alterações
+                  </button>
+                )}
                 <button
                   onClick={handleSave}
-                  disabled={isSaving}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
-                  style={{
-                    background: "var(--accent)",
-                    color: "#fff",
-                  }}
+                  disabled={isSaving || !hasChanges}
+                  className="flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                  style={{ background: "var(--accent)" }}
                 >
                   <Save size={16} />
                   {isSaving ? "Salvando..." : "Salvar Configuração"}

@@ -21,6 +21,7 @@ from src.modules.pricing.config import (
     PRODUCTS,
     SLA_HUMAN_REVIEW_EXTRA_HOURS,
     SLA_MEETING_PRODUCT_EXTRA_HOURS,
+    compute_product_base_price,
 )
 from src.modules.pricing.repository import PricingConfigRepository
 from src.modules.pricing.schemas import (
@@ -37,6 +38,19 @@ from src.modules.pricing.schemas import (
 
 if TYPE_CHECKING:
     from src.models.pricing_config import PricingConfig
+
+
+class _OrgOverrides:
+    """Flat container for org-specific price overrides."""
+
+    def __init__(
+        self,
+        *,
+        product_overrides: dict[str, int],
+        module_overrides: dict[str, int],
+    ) -> None:
+        self.product_overrides = product_overrides
+        self.module_overrides = module_overrides
 
 
 class PricingService:
@@ -58,15 +72,54 @@ class PricingService:
         self._audit = audit
 
     # ------------------------------------------------------------------
-    # Catalog (read-only, no DB)
+    # Catalog (read-only, may apply org overrides)
     # ------------------------------------------------------------------
 
-    def get_catalog(self) -> PricingCatalogSchema:
+    def get_catalog(
+        self,
+        *,
+        organization_id: UUID | str | None = None,
+    ) -> PricingCatalogSchema:
+        modules = list(MODULES.values())
+
+        overrides = (
+            self._get_overrides(organization_id)
+            if organization_id is not None and self._repository is not None
+            else _OrgOverrides(product_overrides={}, module_overrides={})
+        )
+
+        # Apply module overrides first, because product base prices are derived
+        # from the required modules.
+        modules = [
+            module.model_copy(
+                update={
+                    "price_cents": overrides.module_overrides.get(
+                        module.code, module.price_cents
+                    )
+                }
+            )
+            for module in modules
+        ]
+        module_map = {module.code: module for module in modules}
+
+        products = [
+            product.model_copy(
+                update={
+                    "base_price_cents": compute_product_base_price(
+                        product.code,
+                        modules=module_map,
+                        matrix=MATRIX,
+                    )
+                }
+            )
+            for product in PRODUCTS.values()
+        ]
+
         return PricingCatalogSchema(
             currency=PRICING_CURRENCY,
             version=PRICING_VERSION,
-            products=list(PRODUCTS.values()),
-            modules=list(MODULES.values()),
+            products=products,
+            modules=modules,
             matrix=MATRIX,
             sla_rules=PricingSlaRulesSchema(
                 human_review_extra_hours=SLA_HUMAN_REVIEW_EXTRA_HOURS,
@@ -81,25 +134,61 @@ class PricingService:
         *,
         product: str,
         modules: list[str],
+        organization_id: UUID | str | None = None,
     ) -> PricingEstimateSchema:
         """Compute a price/SLA estimate, mirroring the frontend helpers.
 
         ``product`` and ``modules`` are validated against the catalog by the
         request schema (``Literal`` codes), so lookups below are guaranteed to
         resolve.  Duplicate modules are collapsed to a single line item.
+
+        The product base price is derived from the modules marked as
+        ``required`` for that product in ``MATRIX``.  Therefore only modules
+        that are **not** required contribute to ``modules_total_cents``.
         """
         product_meta = PRODUCTS[product]
+        product_matrix = MATRIX.get(product, {})
+
+        overrides = (
+            self._get_overrides(organization_id)
+            if organization_id is not None and self._repository is not None
+            else _OrgOverrides(product_overrides={}, module_overrides={})
+        )
+
+        # Effective module prices (with overrides) used both for line items and
+        # for deriving the product base price from required modules.
+        priced_modules = {
+            code: module.model_copy(
+                update={
+                    "price_cents": overrides.module_overrides.get(
+                        code, module.price_cents
+                    )
+                }
+            )
+            for code, module in MODULES.items()
+        }
+
+        base_price_cents = compute_product_base_price(
+            product,
+            modules=priced_modules,
+            matrix=MATRIX,
+        )
 
         unique_modules = self._unique_preserving_order(modules)
-        line_items = [
-            PricingLineItemSchema(
-                code=MODULES[module].code,
-                title=MODULES[module].title,
-                price_cents=MODULES[module].price_cents,
+        line_items = []
+        modules_total = 0
+        for module in unique_modules:
+            price_cents = priced_modules[module].price_cents
+            module_meta = MODULES[module]
+            line_items.append(
+                PricingLineItemSchema(
+                    code=module_meta.code,
+                    title=module_meta.title,
+                    price_cents=price_cents,
+                )
             )
-            for module in unique_modules
-        ]
-        modules_total = sum(item.price_cents for item in line_items)
+            if not product_matrix.get(module, ModuleMatrixConfig()).required:
+                modules_total += price_cents
 
         sla_hours = product_meta.sla_hours
         if HUMAN_REVIEW_MODULE in unique_modules:
@@ -110,10 +199,10 @@ class PricingService:
         return PricingEstimateSchema(
             product=product,
             currency=PRICING_CURRENCY,
-            base_price_cents=product_meta.base_price_cents,
+            base_price_cents=base_price_cents,
             modules=line_items,
             modules_total_cents=modules_total,
-            total_price_cents=product_meta.base_price_cents + modules_total,
+            total_price_cents=base_price_cents + modules_total,
             sla_hours=sla_hours,
         )
 
@@ -125,6 +214,27 @@ class PricingService:
         if self._repository is None:
             raise ValueError("DB session is required for admin pricing operations.")
         return self._repository
+
+    def _get_overrides(
+        self,
+        organization_id: UUID | str,
+    ) -> _OrgOverrides:
+        """Return flattened product/module override cents for an org."""
+        repo = self._require_repository()
+        config = repo.get_by_organization(organization_id=organization_id)
+        product_overrides = {
+            code: vals["base_price_cents"]
+            for code, vals in (config.product_overrides or {}).items()
+        }
+        module_overrides = {
+            code: vals["price_cents"]
+            for code, vals in (config.module_overrides or {}).items()
+        }
+
+        return _OrgOverrides(
+            product_overrides=product_overrides,
+            module_overrides=module_overrides,
+        )
 
     def get_org_config(
         self,
@@ -326,9 +436,17 @@ class PricingService:
         )
 
 
-def get_pricing_service() -> PricingService:
-    """Factory for catalog-only operations (no DB)."""
-    return PricingService()
+def get_pricing_service(
+    db: Annotated[Session, Depends(get_db)],
+) -> PricingService:
+    """Factory for catalog/estimate operations.
+
+    Catalog reads are conceptually read-only, but per-organization price
+    overrides live in the database, so a session is injected here.  If the
+    caller has no overrides, the repository is still available and simply
+    returns empty overrides.
+    """
+    return PricingService(db=db)
 
 
 def get_pricing_admin_service(

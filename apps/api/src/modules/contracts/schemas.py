@@ -393,7 +393,7 @@ class CaseOperationSummarySchema(BaseModel):
     organization_id: UUID
     parties_count: int = Field(ge=0)
     documents_count: int = Field(ge=0)
-    triage_status: ModuleStatus
+    triage_status: ModuleStatus | None = Field(default=None)
     report_status: ReportStatus
     risk_level: RiskLevel
     progress: int = Field(ge=0, le=100)

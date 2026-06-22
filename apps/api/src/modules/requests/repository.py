@@ -160,8 +160,15 @@ class RequestRepository:
         organization_id: UUID,
         request_id: UUID,
     ) -> Any | None:
-        # Case lookup is delegated to the case repository.
-        return None
+        from src.models.case import Case
+
+        case = self._db.execute(
+            select(Case).where(
+                Case.request_id == _as_uuid(request_id),
+                Case.organization_id == _as_uuid(organization_id),
+            )
+        ).scalar_one_or_none()
+        return case
 
     def mark_case_created(
         self,

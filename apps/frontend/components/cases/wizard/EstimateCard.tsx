@@ -1,16 +1,11 @@
 import { Clock, Wallet } from "lucide-react";
 
+import { formatCurrency } from "@/lib/formatters";
+
 type EstimateCardProps = {
   valorCents: number;
   prazoHoras: number;
 };
-
-function formatBRL(cents: number): string {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL"
-  }).format(cents / 100);
-}
 
 function formatPrazo(hours: number): string {
   if (hours < 24) return `${hours}h úteis`;
@@ -31,7 +26,7 @@ export function EstimateCard({ valorCents, prazoHoras }: EstimateCardProps) {
               Valor referencial simulado
             </p>
             <p className="text-base font-bold text-[var(--text)]">
-              {formatBRL(valorCents)}
+              {formatCurrency(valorCents / 100)}
             </p>
           </div>
         </div>

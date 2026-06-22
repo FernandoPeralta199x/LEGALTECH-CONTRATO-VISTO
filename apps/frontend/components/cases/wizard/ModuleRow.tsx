@@ -2,7 +2,9 @@
 
 import { Badge } from "@/components/Badge";
 import { Switch } from "@/components/Switch";
+import { useModulePrice } from "@/components/pricing/PricingCatalogContext";
 import { MODULOS, type Modulo, type ModuloConfig } from "@/lib/produtoConfig";
+import { formatCents } from "@/lib/formatters";
 
 type ModuleRowProps = {
   modulo: Modulo;
@@ -18,6 +20,8 @@ export function ModuleRow({
   onCheckedChange
 }: ModuleRowProps) {
   const meta = MODULOS[modulo];
+  const backendPrice = useModulePrice(meta.code);
+  const displayPrice = backendPrice ?? meta.precoCents;
 
   return (
     <div className="cv-form-card flex items-start justify-between gap-4 px-5 py-4">
@@ -31,7 +35,7 @@ export function ModuleRow({
         </div>
         <p className="mt-1 text-xs leading-5 text-[var(--text2)]">{meta.descricao}</p>
         <p className="mt-1.5 text-[11px] text-[var(--text3)]">
-          Referência simulada: R$ {(meta.precoCents / 100).toFixed(2).replace(".", ",")}
+          Referência simulada: R$ {formatCents(displayPrice)}
         </p>
       </div>
 

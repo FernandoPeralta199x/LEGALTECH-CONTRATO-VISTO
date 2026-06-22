@@ -3,9 +3,15 @@
 import { useMemo } from "react";
 
 import {
+  usePricingLookup,
+  usePricingMatrix,
+} from "@/components/pricing/PricingCatalogContext";
+import {
+  computeProductBasePrice,
   estimarPrazoHoras,
-  estimarValor,
   MATRIZ,
+  MODULOS,
+  PRODUTOS,
   type Modulo,
   type Produto
 } from "@/lib/produtoConfig";
@@ -22,13 +28,35 @@ type ModulesStepProps = {
 export function ModulesStep({ produto, state, onChange }: ModulesStepProps) {
   const matriz = MATRIZ[produto];
   const modulos = Object.keys(matriz) as Modulo[];
+  const { products, modules } = usePricingLookup();
+  const matrix = usePricingMatrix();
+
+  const isRequired = (modulo: Modulo): boolean => {
+    const remote = matrix[produto]?.[modulo];
+    if (remote) return remote.required === true || remote.obrigatorio === true;
+    return matriz[modulo]?.obrigatorio === true;
+  };
 
   const ativos = useMemo(
     () => modulos.filter((m) => state[m]),
     [modulos, state]
   );
 
-  const valor = useMemo(() => estimarValor(produto, ativos), [produto, ativos]);
+  const productCents = products.get(PRODUTOS[produto].code)?.base_price_cents
+    ?? computeProductBasePrice(produto);
+
+  const valor = useMemo(() => {
+    // O preço base do produto já engloba os módulos obrigatórios (bloqueados).
+    // Somente módulos opcionais ativados pelo usuário incrementam o valor.
+    const optionalTotal = ativos.reduce((sum, modulo) => {
+      if (isRequired(modulo)) return sum;
+      const code = MODULOS[modulo].code;
+      const price = modules.get(code)?.price_cents ?? MODULOS[modulo].precoCents;
+      return sum + price;
+    }, 0);
+    return productCents + optionalTotal;
+  }, [ativos, modules, produto, productCents]);
+
   const prazo = useMemo(() => estimarPrazoHoras(produto, ativos), [produto, ativos]);
 
   function toggle(modulo: Modulo, value: boolean) {

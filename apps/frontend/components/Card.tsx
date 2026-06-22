@@ -6,12 +6,12 @@ type CardProps = {
   actions?: ReactNode;
   children?: ReactNode;
   className?: string;
-  description?: string;
+  description?: string | ReactNode;
   /** Adds a blue glow shadow */
   glow?: boolean;
   /** Enables hover lift + border brightening */
   interactive?: boolean;
-  title?: string;
+  title?: string | ReactNode;
 };
 
 export function Card({

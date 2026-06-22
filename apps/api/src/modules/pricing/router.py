@@ -31,7 +31,7 @@ def dump_model(model) -> dict:
 
 
 # ------------------------------------------------------------------
-# Catalog (read-only, no DB)
+# Catalog (read-only, may apply org overrides when DB is available)
 # ------------------------------------------------------------------
 
 
@@ -40,8 +40,8 @@ def get_pricing_catalog(
     service: Annotated[PricingService, Depends(get_pricing_service)],
     tenant: Annotated[TenantContext, Depends(require_permission("pricing:read"))],
 ) -> dict[str, object]:
-    catalog = service.get_catalog()
-    return success_response(dump_model(catalog), source_mode="local")
+    catalog = service.get_catalog(organization_id=tenant.organization_id)
+    return success_response(dump_model(catalog), source_mode="real")
 
 
 @router.post("/estimate")
@@ -53,8 +53,9 @@ def estimate_pricing(
     estimate = service.estimate(
         product=payload.product,
         modules=list(payload.modules),
+        organization_id=tenant.organization_id,
     )
-    return success_response(dump_model(estimate), source_mode="local")
+    return success_response(dump_model(estimate), source_mode="real")
 
 
 # ------------------------------------------------------------------

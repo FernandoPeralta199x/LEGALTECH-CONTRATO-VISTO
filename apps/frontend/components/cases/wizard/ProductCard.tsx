@@ -3,8 +3,10 @@
 import { Bot, BriefcaseBusiness, Check, FileSearch, Users } from "lucide-react";
 import type { ComponentType } from "react";
 
+import { useProductPrice } from "@/components/pricing/PricingCatalogContext";
 import { cn } from "@/lib/cn";
-import { PRODUTOS, type Produto } from "@/lib/produtoConfig";
+import { computeProductBasePrice, PRODUTOS, type Produto } from "@/lib/produtoConfig";
+import { formatCents } from "@/lib/formatters";
 
 const ICONS: Record<Produto, ComponentType<{ size?: number; className?: string }>> = {
   dados_partes: Users,
@@ -22,6 +24,8 @@ type ProductCardProps = {
 export function ProductCard({ produto, selected, onSelect }: ProductCardProps) {
   const meta = PRODUTOS[produto];
   const Icon = ICONS[produto];
+  const backendPrice = useProductPrice(meta.code);
+  const displayPrice = backendPrice ?? computeProductBasePrice(produto);
 
   return (
     <button
@@ -73,7 +77,7 @@ export function ProductCard({ produto, selected, onSelect }: ProductCardProps) {
         <span>
           Referência simulada{" "}
           <span className="font-semibold text-[var(--text)]">
-            R$ {(meta.precoBaseCents / 100).toFixed(2).replace(".", ",")}
+            R$ {formatCents(displayPrice)}
           </span>
         </span>
         <span>Prazo ref.: {meta.slaHoras}h</span>

@@ -7,6 +7,7 @@ from src.modules.common.identifiers import parse_uuid
 from src.modules.contracts.operational import (
     OperationalRepositories,
     build_operational_repositories,
+    get_operational_store,
 )
 from src.modules.contracts.schemas import (
     CaseSchema,
@@ -20,6 +21,8 @@ from src.modules.contracts.schemas import (
     TimelineSeverity,
     TimelineSource,
 )
+from src.modules.contracts.case_bridge import OperationalCaseRepository
+from src.modules.requests.repository import RequestRepository
 from src.modules.triage.service import TriageService
 
 
@@ -27,8 +30,18 @@ class RequestService:
     def __init__(
         self,
         repositories: OperationalRepositories | None = None,
+        db = None,
     ) -> None:
-        self.repositories = repositories or build_operational_repositories()
+        self.repositories = repositories or self._build_default_repositories(db)
+
+    @staticmethod
+    def _build_default_repositories(db: Any = None) -> OperationalRepositories:
+        store = get_operational_store()
+        return build_operational_repositories(
+            store=store,
+            requests=RequestRepository(db) if db else None,
+            cases=OperationalCaseRepository(db, store=store) if db else None,
+        )
 
     def create_request(
         self,
@@ -99,7 +112,6 @@ class RequestService:
             organization_id=organization_uuid,
             request_id=request.id,
         )
-
         if case is None:
             # Case still lives in the in-memory store until PERSIST-03.
             return {
@@ -118,9 +130,21 @@ class RequestService:
                 "source_mode": request.source_mode.value,
             }
 
+        # Normalize case to the bridge schema so enum/string handling is consistent.
+        case_schema = (
+            case
+            if hasattr(case, "status") and hasattr(case.status, "value")
+            else self.repositories.cases.get(
+                organization_id=organization_uuid,
+                case_id=case.id,
+            )
+        )
+        if case_schema is None:
+            raise ResourceNotFoundError("Case not found after creation.")
+
         aggregate = self.repositories.cases.get_aggregate(
             organization_id=organization_uuid,
-            case_id=case.id,
+            case_id=case_schema.id,
         )
         if aggregate is None:
             raise ResourceNotFoundError("Case aggregate not found.")
@@ -130,16 +154,16 @@ class RequestService:
             **request.model_dump(mode="json"),
             "request_id": str(request.id),
             "request_status": request.status.value,
-            "case_id": str(case.id),
-            "case_code": case.code,
-            "case_status": case.status.value,
-            "product_type": case.product_type,
-            "product_label": case.product_label,
+            "case_id": str(case_schema.id),
+            "case_code": case_schema.code,
+            "case_status": case_schema.status.value,
+            "product_type": case_schema.product_type,
+            "product_label": case_schema.product_label,
             "documents_count": aggregate.summary.documents_count,
             "parties_count": aggregate.summary.parties_count,
             "triage_modules_count": len(aggregate.triage_modules),
             "timeline_events_count": timeline_events_count,
-            "source_mode": case.source_mode.value,
+            "source_mode": case_schema.source_mode.value,
         }
 
     def get_request(
