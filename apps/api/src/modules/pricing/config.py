@@ -189,7 +189,14 @@ def compute_product_base_price(
     modules: dict[str, ModuleMeta] | None = None,
     matrix: dict[str, dict[str, ModuleMatrixConfig]] | None = None,
 ) -> int:
-    """Return the product base price as the sum of its required modules."""
+    """Return the product base price as the sum of its required modules.
+
+    Exception: ``reuniao_equipe`` starts at 0 — its "fixo no roteiro" modules
+    are opt-in and contribute to the total only when the user enables them
+    (see ``PricingService.estimate``).
+    """
+    if product_code == "reuniao_equipe":
+        return 0
     mods = MODULES if modules is None else modules
     mx = MATRIX if matrix is None else matrix
     product_matrix = mx.get(product_code, {})

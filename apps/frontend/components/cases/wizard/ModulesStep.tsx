@@ -48,8 +48,12 @@ export function ModulesStep({ produto, state, onChange }: ModulesStepProps) {
   const valor = useMemo(() => {
     // O preço base do produto já engloba os módulos obrigatórios (bloqueados).
     // Somente módulos opcionais ativados pelo usuário incrementam o valor.
+    //
+    // Exceção: para `reuniao_equipe`, base = 0 e os módulos "fixo no roteiro"
+    // são opt-in — eles também devem somar quando ativos.
+    const includeRequired = produto === "reuniao_equipe";
     const optionalTotal = ativos.reduce((sum, modulo) => {
-      if (isRequired(modulo)) return sum;
+      if (!includeRequired && isRequired(modulo)) return sum;
       const code = MODULOS[modulo].code;
       const price = modules.get(code)?.price_cents ?? MODULOS[modulo].precoCents;
       return sum + price;

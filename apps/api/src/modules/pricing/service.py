@@ -183,6 +183,9 @@ class PricingService:
         )
 
         unique_modules = self._unique_preserving_order(modules)
+        # For `reuniao_equipe`, base = 0 and the "fixo no roteiro" modules are
+        # opt-in, so required modules also contribute to the modules total.
+        include_required_in_total = product == "reuniao_equipe"
         line_items = []
         modules_total = 0
         for module in unique_modules:
@@ -195,7 +198,8 @@ class PricingService:
                     price_cents=price_cents,
                 )
             )
-            if not product_matrix.get(module, ModuleMatrixConfig()).required:
+            is_required = product_matrix.get(module, ModuleMatrixConfig()).required
+            if include_required_in_total or not is_required:
                 modules_total += price_cents
 
         sla_hours = product_meta.sla_hours

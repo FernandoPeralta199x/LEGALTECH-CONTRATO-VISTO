@@ -100,11 +100,12 @@ export function ReviewStep({
   // local baseado no catálogo estático para não deixar a tela sem valor.
   const localFallbackCents = useMemo(() => {
     const productCents = computeProductBasePrice(produto);
+    const includeRequired = produto === "reuniao_equipe";
     const optionalTotal = ativos.reduce((sum, modulo) => {
       const remote = matrix[produto]?.[modulo];
       const isRequired =
         remote?.required === true || remote?.obrigatorio === true || matriz[modulo]?.obrigatorio === true;
-      if (isRequired) return sum;
+      if (!includeRequired && isRequired) return sum;
       return sum + MODULOS[modulo].precoCents;
     }, 0);
     return productCents + optionalTotal;

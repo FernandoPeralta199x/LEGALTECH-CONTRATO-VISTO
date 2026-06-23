@@ -194,8 +194,14 @@ export const PAPEIS: { id: Papel; label: string }[] = [
 
 export type TipoPessoa = "pf" | "pj";
 
-/** Soma dos preços dos módulos obrigatórios de um produto. */
+/** Soma dos preços dos módulos obrigatórios de um produto.
+ *
+ * Exceção: `reuniao_equipe` começa em R$ 0 — os módulos marcados como
+ * "fixo no roteiro" são opt-in e somam ao valor apenas quando o usuário
+ * os ativa explicitamente (ver ModulesStep/ReviewStep).
+ */
 export function computeProductBasePrice(produto: Produto): number {
+  if (produto === "reuniao_equipe") return 0;
   const matriz = MATRIZ[produto];
   return Object.entries(matriz).reduce((total, [modulo, config]) => {
     if (config.obrigatorio) {
