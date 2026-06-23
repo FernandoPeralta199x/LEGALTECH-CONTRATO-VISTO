@@ -162,8 +162,8 @@ export const MATRIZ: Record<Produto, Record<Modulo, ModuloConfig>> = {
     ia_deepseek: { default: true, recomendado: true },
     serasa_procon: { default: false },
     analise_contratual_ia: { default: false, recomendado: true },
-    revisao_humana: { default: true, obrigatorio: true, bloqueado: true },
-    reuniao_equipe: { default: true, obrigatorio: true, bloqueado: true }
+    revisao_humana: { default: false, obrigatorio: true },
+    reuniao_equipe: { default: false, obrigatorio: true }
   }
 };
 

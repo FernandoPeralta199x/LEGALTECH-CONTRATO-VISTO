@@ -178,8 +178,8 @@ MATRIX: Final[dict[str, dict[str, ModuleMatrixConfig]]] = {
         "ia_deepseek": ModuleMatrixConfig(default=True, recommended=True),
         "serasa_procon": ModuleMatrixConfig(default=False),
         "analise_contratual_ia": ModuleMatrixConfig(default=False, recommended=True),
-        "revisao_humana": ModuleMatrixConfig(default=True, required=True, locked=True),
-        "reuniao_equipe": ModuleMatrixConfig(default=True, required=True, locked=True),
+        "revisao_humana": ModuleMatrixConfig(default=False, required=True),
+        "reuniao_equipe": ModuleMatrixConfig(default=False, required=True),
     },
 }
 
