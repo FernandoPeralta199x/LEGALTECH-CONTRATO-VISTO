@@ -8,6 +8,7 @@ import { Notification } from "@/components/Notification";
 import { PricingCatalogProvider } from "@/components/pricing/PricingCatalogContext";
 import {
   MATRIZ,
+  PRODUTOS,
   type Modulo,
   type Produto
 } from "@/lib/produtoConfig";
@@ -66,12 +67,14 @@ export function NewCaseWizard() {
   const [parties, setParties] = useState<Party[]>(() => [newParty()]);
   const [arquivo, setArquivo] = useState<WizardFile | null>(null);
   const [produto, setProduto] = useState<Produto | null>(null);
+  const [variant, setVariant] = useState<string | null>(null);
   const [modulos, setModulos] = useState<Record<Modulo, boolean>>(
     () => ({}) as Record<Modulo, boolean>
   );
 
-  function handleProductChange(next: Produto) {
+  function handleProductChange(next: Produto, selectedVariant: string | null) {
     setProduto(next);
+    setVariant(selectedVariant);
     if (next !== produto) {
       setModulos(defaultModulesFor(next));
     }
@@ -88,13 +91,18 @@ export function NewCaseWizard() {
       return Boolean(produto);
     }
     if (step === 4) {
-      return Boolean(produto);
+      if (!produto) return false;
+      const meta = produto ? PRODUTOS[produto] : null;
+      if (meta?.variants?.length) {
+        return Boolean(variant);
+      }
+      return true;
     }
     if (step === 5) {
       return Boolean(produto && arquivo?.status === "done");
     }
     return false;
-  }, [step, parties, arquivo, produto]);
+  }, [step, parties, arquivo, produto, variant]);
 
   async function handleSubmit() {
     if (!canAdvance || !produto || submitting) return;
@@ -107,7 +115,8 @@ export function NewCaseWizard() {
         idempotencyKey,
         modulos,
         parties,
-        produto
+        produto,
+        variant
       });
 
       if (!result.data.caseId) {
@@ -157,9 +166,20 @@ export function NewCaseWizard() {
 
         {step === 1 && <PartiesStep onChange={setParties} parties={parties} />}
         {step === 2 && <ContractStep arquivo={arquivo} onChange={setArquivo} />}
-        {step === 3 && <ProductStep onChange={handleProductChange} produto={produto} />}
+        {step === 3 && (
+          <ProductStep
+            onChange={handleProductChange}
+            produto={produto}
+            variant={variant}
+          />
+        )}
         {step === 4 && produto && (
-          <ModulesStep onChange={setModulos} produto={produto} state={modulos} />
+          <ModulesStep
+            onChange={setModulos}
+            produto={produto}
+            state={modulos}
+            variant={variant}
+          />
         )}
         {step === 5 && produto && (
           <ReviewStep
@@ -167,6 +187,7 @@ export function NewCaseWizard() {
             modulos={modulos}
             parties={parties}
             produto={produto}
+            variant={variant}
           />
         )}
 

@@ -6,10 +6,11 @@ import { ProductCard } from "./ProductCard";
 
 type ProductStepProps = {
   produto: Produto | null;
-  onChange: (produto: Produto) => void;
+  variant: string | null;
+  onChange: (produto: Produto, variant: string | null) => void;
 };
 
-export function ProductStep({ produto, onChange }: ProductStepProps) {
+export function ProductStep({ produto, variant, onChange }: ProductStepProps) {
   const produtos = Object.keys(PRODUTOS) as Produto[];
 
   return (
@@ -28,9 +29,10 @@ export function ProductStep({ produto, onChange }: ProductStepProps) {
         {produtos.map((p) => (
           <ProductCard
             key={p}
-            onSelect={() => onChange(p)}
+            onSelect={(selectedVariant) => onChange(p, selectedVariant)}
             produto={p}
             selected={produto === p}
+            selectedVariant={produto === p ? variant : null}
           />
         ))}
       </div>

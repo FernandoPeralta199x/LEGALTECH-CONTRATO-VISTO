@@ -436,6 +436,7 @@ function mapWizardSubmitPayload(input: WizardOperationalSubmitInput) {
       module_names: activeModules.map((modulo) => MODULOS[modulo].titulo),
       modules: activeModules,
       product: input.produto,
+      product_variant: input.variant ?? null,
       source: "new_case_wizard",
       source_mode: "local"
     }

@@ -26,12 +26,20 @@ export type Modulo =
   | "revisao_humana"
   | "reuniao_equipe";
 
+export type ProductVariant = {
+  code: string;
+  title: string;
+  precoCents: number;
+  parcelas: number;
+};
+
 export type ProdutoMeta = {
   code: string;
   titulo: string;
   descricao: string;
   inclui: string[];
   slaHoras: number;
+  variants?: ProductVariant[];
 };
 
 export type ModuloMeta = {
@@ -68,7 +76,21 @@ export const PRODUTOS: Record<Produto, ProdutoMeta> = {
     titulo: "Reunião com advogado",
     descricao: "Preparação local para uma futura etapa com profissional jurídico.",
     inclui: ["Critérios prévios", "Reunião planejada", "Roteiro para parecer futuro"],
-    slaHoras: 72
+    slaHoras: 72,
+    variants: [
+      {
+        code: "equipe_especializada",
+        title: "Com equipe especializada",
+        precoCents: 40000,
+        parcelas: 10
+      },
+      {
+        code: "dr_thyago",
+        title: "Com Dr. Thyago",
+        precoCents: 75000,
+        parcelas: 10
+      }
+    ]
   }
 };
 
@@ -77,7 +99,7 @@ export const MODULOS: Record<Modulo, ModuloMeta> = {
     code: "escavador",
     titulo: "Escavador",
     descricao: "Conector planejado para processos judiciais, histórico jurídico e dados públicos.",
-    precoCents: 4900
+    precoCents: 6000
   },
   targetdata: {
     code: "targetdata",

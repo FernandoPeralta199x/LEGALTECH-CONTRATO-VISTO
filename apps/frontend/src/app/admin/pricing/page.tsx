@@ -65,6 +65,9 @@ export default function AdminPricingPage() {
   const [moduleOverrides, setModuleOverrides] = useState<
     Record<string, number | null>
   >({});
+  const [variantOverrides, setVariantOverrides] = useState<
+    Record<string, Record<string, { price_cents: number | null; installments: number | null }>>
+  >({});
   const [notes, setNotes] = useState("");
 
   const loadData = useCallback(async () => {
@@ -88,6 +91,23 @@ export default function AdminPricingPage() {
           Object.entries(cfg.module_overrides).map(([k, v]) => [k, v.price_cents])
         )
       );
+
+      const initialVariants: Record<
+        string,
+        Record<string, { price_cents: number | null; installments: number | null }>
+      > = {};
+      for (const [productCode, variants] of Object.entries(
+        cfg.product_variant_overrides
+      )) {
+        initialVariants[productCode] = Object.fromEntries(
+          Object.entries(variants).map(([variantCode, v]) => [
+            variantCode,
+            { price_cents: v.price_cents, installments: v.installments }
+          ])
+        );
+      }
+      setVariantOverrides(initialVariants);
+
       setNotes(cfg.notes ?? "");
       setStatus("idle");
     } catch (err) {
@@ -123,8 +143,32 @@ export default function AdminPricingPage() {
       if ((initialModules[key] ?? null) !== (moduleOverrides[key] ?? null)) return true;
     }
 
+    const initialVariantMap = new Map<string, number | null>();
+    const currentVariantMap = new Map<string, number | null>();
+    for (const [productCode, variants] of Object.entries(
+      config.product_variant_overrides ?? {}
+    )) {
+      for (const [variantCode, v] of Object.entries(variants)) {
+        initialVariantMap.set(`${productCode}.${variantCode}.price`, v.price_cents);
+        initialVariantMap.set(`${productCode}.${variantCode}.installments`, v.installments);
+      }
+    }
+    for (const [productCode, variants] of Object.entries(variantOverrides)) {
+      for (const [variantCode, v] of Object.entries(variants)) {
+        currentVariantMap.set(`${productCode}.${variantCode}.price`, v.price_cents);
+        currentVariantMap.set(`${productCode}.${variantCode}.installments`, v.installments);
+      }
+    }
+    const allVariantKeys = new Set([
+      ...initialVariantMap.keys(),
+      ...currentVariantMap.keys(),
+    ]);
+    for (const key of allVariantKeys) {
+      if (initialVariantMap.get(key) !== currentVariantMap.get(key)) return true;
+    }
+
     return false;
-  }, [config, unlimitedCases, casesLimit, moduleOverrides, notes]);
+  }, [config, unlimitedCases, casesLimit, moduleOverrides, variantOverrides, notes]);
 
   const handleReset = () => {
     if (!config) return;
@@ -136,6 +180,23 @@ export default function AdminPricingPage() {
         Object.entries(config.module_overrides).map(([k, v]) => [k, v.price_cents])
       )
     );
+
+    const initialVariants: Record<
+      string,
+      Record<string, { price_cents: number | null; installments: number | null }>
+    > = {};
+    for (const [productCode, variants] of Object.entries(
+      config.product_variant_overrides
+    )) {
+      initialVariants[productCode] = Object.fromEntries(
+        Object.entries(variants).map(([variantCode, v]) => [
+          variantCode,
+          { price_cents: v.price_cents, installments: v.installments }
+        ])
+      );
+    }
+    setVariantOverrides(initialVariants);
+
     setNotes(config.notes ?? "");
   };
 
@@ -154,6 +215,21 @@ export default function AdminPricingPage() {
         }
       }
       payload.module_overrides = modOv;
+
+      const varOv: Record<string, Record<string, { price_cents: number; installments: number }>> = {};
+      for (const [productCode, variants] of Object.entries(variantOverrides)) {
+        for (const [variantCode, v] of Object.entries(variants)) {
+          const price = v.price_cents;
+          const installments = v.installments ?? 10;
+          if (price !== null && !Number.isNaN(price) && price >= 0 && installments >= 1) {
+            if (!varOv[productCode]) varOv[productCode] = {};
+            varOv[productCode][variantCode] = { price_cents: price, installments };
+          }
+        }
+      }
+      if (Object.keys(varOv).length > 0) {
+        payload.product_variant_overrides = varOv;
+      }
 
       payload.notes = notes.trim() || null;
 
@@ -403,6 +479,152 @@ export default function AdminPricingPage() {
                         </div>
                       );
                     })}
+                  </div>
+                </Card>
+              )}
+
+              {/* Product Variants Overrides */}
+              {catalog && (
+                <Card
+                  title={
+                    <span className="flex items-center gap-2">
+                      <Layers size={18} style={{ color: "var(--accent)" }} />
+                      Preços de Variantes de Produto
+                    </span>
+                  }
+                  description="Edite o preço e o número de parcelas para cada variante disponível. Deixe vazio para usar o padrão."
+                  actions={
+                    <span
+                      className="inline-flex items-center gap-1 text-xs"
+                      style={{ color: "var(--text3)" }}
+                    >
+                      <Info size={13} /> Valores em reais
+                    </span>
+                  }
+                >
+                  <div className="space-y-6">
+                    {catalog.products
+                      .filter((p) => (p.variants?.length ?? 0) > 0)
+                      .map((product) => (
+                        <div key={product.code}>
+                          <h4
+                            className="mb-2 text-sm font-semibold"
+                            style={{ color: "var(--text)" }}
+                          >
+                            {product.title}
+                          </h4>
+                          <div className="space-y-3">
+                            {product.variants?.map((variant) => {
+                              const ov = variantOverrides[product.code]?.[variant.code] ?? {
+                                price_cents: null,
+                                installments: null,
+                              };
+                              const hasOverride = ov.price_cents !== null;
+                              const installmentValue = ov.installments ?? variant.installments;
+                              return (
+                                <div
+                                  key={variant.code}
+                                  className="flex flex-col gap-3 rounded-lg border border-[var(--bd)] bg-[var(--surf2)] p-3 sm:flex-row sm:items-center"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <div
+                                      className="text-sm font-medium"
+                                      style={{ color: "var(--text)" }}
+                                    >
+                                      {variant.title}
+                                    </div>
+                                    <div
+                                      className="mt-0.5 flex items-center gap-2 text-xs"
+                                      style={{ color: "var(--text2)" }}
+                                    >
+                                      <span>
+                                        Padrão: {centsToReaisLabel(variant.price_cents)} em{" "}
+                                        {variant.installments}x
+                                      </span>
+                                      {hasOverride && (
+                                        <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                                          override
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <CurrencyInput
+                                      value={ov.price_cents}
+                                      onChange={(cents) =>
+                                        setVariantOverrides((prev) => ({
+                                          ...prev,
+                                          [product.code]: {
+                                            ...(prev[product.code] ?? {}),
+                                            [variant.code]: {
+                                              ...ov,
+                                              price_cents: cents,
+                                              installments: installmentValue,
+                                            },
+                                          },
+                                        }))
+                                      }
+                                      placeholder={centsToReaisLabel(variant.price_cents)}
+                                      className="w-40"
+                                      aria-label={`Preço override para ${variant.title}`}
+                                    />
+                                    <div className="flex items-center gap-2">
+                                      <label className="text-xs" style={{ color: "var(--text3)" }}>
+                                        Parcelas
+                                      </label>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        value={installmentValue}
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          const parsed = v === "" ? null : parseInt(v, 10);
+                                          setVariantOverrides((prev) => ({
+                                            ...prev,
+                                            [product.code]: {
+                                              ...(prev[product.code] ?? {}),
+                                              [variant.code]: {
+                                                ...ov,
+                                                price_cents: ov.price_cents,
+                                                installments: parsed,
+                                              },
+                                            },
+                                          }));
+                                        }}
+                                        className="w-20 rounded-lg border border-[var(--bd)] bg-[var(--surf2)] px-2 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                                        aria-label={`Parcelas para ${variant.title}`}
+                                      />
+                                    </div>
+                                    {hasOverride && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setVariantOverrides((prev) => {
+                                            const next = { ...prev };
+                                            if (next[product.code]) {
+                                              const productVariants = { ...next[product.code] };
+                                              delete productVariants[variant.code];
+                                              if (Object.keys(productVariants).length === 0) {
+                                                delete next[product.code];
+                                              } else {
+                                                next[product.code] = productVariants;
+                                              }
+                                            }
+                                            return next;
+                                          })
+                                        }
+                                        className="text-xs text-[var(--text3)] underline hover:text-[var(--text)]"
+                                      >
+                                        usar padrão
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                   </div>
                 </Card>
               )}

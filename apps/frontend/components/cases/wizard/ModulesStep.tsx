@@ -21,11 +21,12 @@ import { ModuleRow } from "./ModuleRow";
 
 type ModulesStepProps = {
   produto: Produto;
+  variant: string | null;
   state: Record<Modulo, boolean>;
   onChange: (state: Record<Modulo, boolean>) => void;
 };
 
-export function ModulesStep({ produto, state, onChange }: ModulesStepProps) {
+export function ModulesStep({ produto, variant, state, onChange }: ModulesStepProps) {
   const matriz = MATRIZ[produto];
   const modulos = Object.keys(matriz) as Modulo[];
   const { products, modules } = usePricingLookup();
@@ -45,6 +46,9 @@ export function ModulesStep({ produto, state, onChange }: ModulesStepProps) {
   const productCents = products.get(PRODUTOS[produto].code)?.base_price_cents
     ?? computeProductBasePrice(produto);
 
+  const selectedVariant = PRODUTOS[produto].variants?.find((v) => v.code === variant);
+  const variantCents = selectedVariant?.precoCents ?? 0;
+
   const valor = useMemo(() => {
     // O preço base do produto já engloba os módulos obrigatórios (bloqueados).
     // Somente módulos opcionais ativados pelo usuário incrementam o valor.
@@ -54,8 +58,8 @@ export function ModulesStep({ produto, state, onChange }: ModulesStepProps) {
       const price = modules.get(code)?.price_cents ?? MODULOS[modulo].precoCents;
       return sum + price;
     }, 0);
-    return productCents + optionalTotal;
-  }, [ativos, modules, produto, productCents]);
+    return productCents + variantCents + optionalTotal;
+  }, [ativos, modules, produto, productCents, variantCents]);
 
   const prazo = useMemo(() => estimarPrazoHoras(produto, ativos), [produto, ativos]);
 

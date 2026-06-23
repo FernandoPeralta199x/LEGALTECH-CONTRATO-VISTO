@@ -13,6 +13,7 @@ from src.modules.pricing.config import (
     ModuleMeta,
     ProductCode,
     ProductMeta,
+    ProductVariant,
 )
 
 
@@ -25,6 +26,17 @@ class PricingSlaRulesSchema(BaseModel):
     meeting_product_extra_hours: int
     human_review_module: str
     meeting_product: str
+
+
+class ProductVariantSchema(BaseModel):
+    """Selectable price variant for a product."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: str
+    title: str
+    price_cents: int
+    installments: int
 
 
 class PricingCatalogSchema(BaseModel):
@@ -51,6 +63,7 @@ class PricingEstimateRequestSchema(BaseModel):
 
     product: ProductCode
     modules: list[ModuleCode] = Field(default_factory=list)
+    variant: str | None = Field(default=None, max_length=50)
 
 
 class PricingLineItemSchema(BaseModel):
@@ -63,16 +76,30 @@ class PricingLineItemSchema(BaseModel):
     price_cents: int
 
 
+class ProductVariantLineItemSchema(BaseModel):
+    """Selected product variant line item."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: str
+    title: str
+    price_cents: int
+    installments: int
+    installment_cents: int
+
+
 class PricingEstimateSchema(BaseModel):
     """Server-side computed estimate for a product + selected modules."""
 
     model_config = ConfigDict(extra="forbid")
 
     product: str
+    variant: ProductVariantLineItemSchema | None = None
     currency: str
     base_price_cents: int
     modules: list[PricingLineItemSchema]
     modules_total_cents: int
+    variant_price_cents: int
     total_price_cents: int
     sla_hours: int
 
@@ -88,6 +115,15 @@ class ProductOverrideSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     base_price_cents: int = Field(ge=0)
+
+
+class ProductVariantOverrideSchema(BaseModel):
+    """Partial override for a single product variant (admin-only)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    price_cents: int = Field(ge=0)
+    installments: int = Field(default=10, ge=1)
 
 
 class ModuleOverrideSchema(BaseModel):
@@ -110,6 +146,9 @@ class UpdatePricingConfigRequest(BaseModel):
 
     cases_limit: int | None = Field(default=None, ge=1)
     product_overrides: dict[ProductCode, ProductOverrideSchema] | None = None
+    product_variant_overrides: dict[
+        ProductCode, dict[str, ProductVariantOverrideSchema]
+    ] | None = None
     module_overrides: dict[ModuleCode, ModuleOverrideSchema] | None = None
     notes: str | None = Field(default=None, max_length=500)
 
@@ -122,6 +161,7 @@ class PricingConfigResponseSchema(BaseModel):
     organization_id: UUID
     cases_limit: int | None
     product_overrides: dict[str, ProductOverrideSchema]
+    product_variant_overrides: dict[str, dict[str, ProductVariantOverrideSchema]]
     module_overrides: dict[str, ModuleOverrideSchema]
     version: int
     notes: str | None

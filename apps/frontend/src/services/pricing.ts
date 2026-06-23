@@ -19,6 +19,14 @@ export interface PricingProduct {
   includes: string[];
   base_price_cents: number;
   sla_hours: number;
+  variants?: PricingProductVariant[];
+}
+
+export interface PricingProductVariant {
+  code: string;
+  title: string;
+  price_cents: number;
+  installments: number;
 }
 
 export interface PricingModule {
@@ -59,16 +67,31 @@ export interface PricingLineItem {
 
 export interface PricingEstimate {
   product: string;
+  variant: PricingProductVariantLineItem | null;
   currency: string;
   base_price_cents: number;
   modules: PricingLineItem[];
   modules_total_cents: number;
+  variant_price_cents: number;
   total_price_cents: number;
   sla_hours: number;
 }
 
+export interface PricingProductVariantLineItem {
+  code: string;
+  title: string;
+  price_cents: number;
+  installments: number;
+  installment_cents: number;
+}
+
 export interface ProductOverride {
   base_price_cents: number;
+}
+
+export interface ProductVariantOverride {
+  price_cents: number;
+  installments: number;
 }
 
 export interface ModuleOverride {
@@ -79,6 +102,7 @@ export interface PricingConfig {
   organization_id: string;
   cases_limit: number | null;
   product_overrides: Record<string, ProductOverride>;
+  product_variant_overrides: Record<string, Record<string, ProductVariantOverride>>;
   module_overrides: Record<string, ModuleOverride>;
   version: number;
   notes: string | null;
@@ -89,6 +113,7 @@ export interface PricingConfig {
 export interface UpdatePricingConfigPayload {
   cases_limit?: number | null;
   product_overrides?: Record<string, ProductOverride> | null;
+  product_variant_overrides?: Record<string, Record<string, ProductVariantOverride>> | null;
   module_overrides?: Record<string, ModuleOverride> | null;
   notes?: string | null;
 }
@@ -110,11 +135,12 @@ export async function getPricingCatalog(): Promise<PricingCatalog> {
 
 export async function estimatePricing(
   product: string,
-  modules: string[]
+  modules: string[],
+  variant?: string | null
 ): Promise<PricingEstimate> {
   const res = await apiClient.post<PricingEstimate>(
     "/api/v1/pricing/estimate",
-    { product, modules }
+    { product, modules, variant }
   );
   return res.data;
 }
