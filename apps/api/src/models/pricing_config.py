@@ -45,6 +45,12 @@ class PricingConfig(OrganizationScopedMixin, UUIDPrimaryKeyMixin, TimestampMixin
         server_default=text("'{}'::jsonb"),
         comment="Partial product overrides: {code: {base_price_cents: int}}",
     )
+    product_variant_overrides: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
+        comment="Partial product variant overrides: {code: {variant_code: {price_cents: int, installments: int}}}",
+    )
     module_overrides: Mapped[dict] = mapped_column(
         JSONB,
         nullable=False,

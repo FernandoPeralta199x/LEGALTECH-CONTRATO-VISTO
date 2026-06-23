@@ -29,6 +29,7 @@ class PricingConfigRepository:
         updated_by: UUID | str | None = None,
         cases_limit: int | None = ...,
         product_overrides: dict | None = None,
+        product_variant_overrides: dict | None = None,
         module_overrides: dict | None = None,
         notes: str | None = ...,
     ) -> PricingConfig:
@@ -49,6 +50,8 @@ class PricingConfigRepository:
             config.cases_limit = cases_limit
         if product_overrides is not None:
             config.product_overrides = product_overrides
+        if product_variant_overrides is not None:
+            config.product_variant_overrides = product_variant_overrides
         if module_overrides is not None:
             config.module_overrides = module_overrides
         if notes is not ...:
