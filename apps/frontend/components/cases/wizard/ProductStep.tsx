@@ -13,6 +13,20 @@ type ProductStepProps = {
 export function ProductStep({ produto, variant, onChange }: ProductStepProps) {
   const produtos = Object.keys(PRODUTOS) as Produto[];
 
+  function handleProductSelect(selectedProduto: Produto, selectedVariant: string | null) {
+    const sameProduct = selectedProduto === produto;
+    if (sameProduct && selectedVariant === variant) {
+      // Toggle: same variant clicked again -> deselect variant
+      onChange(produto, null);
+    } else if (sameProduct) {
+      // Same product, different variant -> just update variant
+      onChange(produto, selectedVariant);
+    } else {
+      // Different product -> select it and clear variant
+      onChange(selectedProduto, selectedVariant);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div>
@@ -29,7 +43,7 @@ export function ProductStep({ produto, variant, onChange }: ProductStepProps) {
         {produtos.map((p) => (
           <ProductCard
             key={p}
-            onSelect={(selectedVariant) => onChange(p, selectedVariant)}
+            onSelect={(selectedVariant) => handleProductSelect(p, selectedVariant)}
             produto={p}
             selected={produto === p}
             selectedVariant={produto === p ? variant : null}

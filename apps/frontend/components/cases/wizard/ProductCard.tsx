@@ -3,6 +3,8 @@
 import { Bot, BriefcaseBusiness, Check, FileSearch, Users } from "lucide-react";
 import type { ComponentType } from "react";
 
+import { useMemo } from "react";
+
 import { useProductPrice } from "@/components/pricing/PricingCatalogContext";
 import { cn } from "@/lib/cn";
 import { computeProductBasePrice, PRODUTOS, type Produto } from "@/lib/produtoConfig";
@@ -31,8 +33,31 @@ export function ProductCard({
   const meta = PRODUTOS[produto];
   const Icon = ICONS[produto];
   const backendPrice = useProductPrice(meta.code);
-  const displayPrice = backendPrice ?? computeProductBasePrice(produto);
   const hasVariants = meta.variants && meta.variants.length > 0;
+
+  // Para produtos com variants, mostrar o menor/larger preço das opções,
+  // já que o preço base derivado dos módulos obrigatórios não reflete o valor
+  // real apresentado ao cliente.
+  const displayPrice = useMemo(() => {
+    if (backendPrice !== null && backendPrice !== undefined) return backendPrice;
+    if (hasVariants && meta.variants) {
+      const prices = meta.variants.map((v) => v.precoCents);
+      const min = Math.min(...prices);
+      return min;
+    }
+    return computeProductBasePrice(produto);
+  }, [backendPrice, hasVariants, meta.variants, produto]);
+
+  const displayPriceLabel = useMemo(() => {
+    if (hasVariants && meta.variants) {
+      const prices = meta.variants.map((v) => v.precoCents);
+      const min = Math.min(...prices);
+      const max = Math.max(...prices);
+      if (min === max) return `R$ ${formatCents(min)}`;
+      return `R$ ${formatCents(min)} - R$ ${formatCents(max)}`;
+    }
+    return `R$ ${formatCents(displayPrice)}`;
+  }, [hasVariants, meta.variants, displayPrice]);
 
   return (
     <div
@@ -50,7 +75,8 @@ export function ProductCard({
         type="button"
       >
         {selected && (
-          <span className="absolute right-4 top-4 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--teal-d)] text-white shadow-md">
+          <span className="absolute right-4 top-4 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--teal-d)] text-white shadow-md"
+          >
             <Check size={14} />
           </span>
         )}
@@ -66,7 +92,7 @@ export function ProductCard({
           <Icon size={20} />
         </div>
 
-        <div className="flex-1">
+        <div className="flex-1 text-center">
           <h3 className="text-base font-semibold text-[var(--text)]">{meta.titulo}</h3>
           <p className="mt-1 text-xs leading-5 text-[var(--text2)]">{meta.descricao}</p>
         </div>
@@ -87,7 +113,7 @@ export function ProductCard({
           <span>
             Referência simulada{" "}
             <span className="font-semibold text-[var(--text)]">
-              R$ {formatCents(displayPrice)}
+              {displayPriceLabel}
             </span>
           </span>
           <span>Prazo ref.: {meta.slaHoras}h</span>
@@ -95,7 +121,8 @@ export function ProductCard({
       </button>
 
       {hasVariants && selected && (
-        <div className="mt-2 space-y-2 border-t border-[var(--bd)] pt-3">
+        <div className="mt-2 space-y-2 border-t border-[var(--bd)] pt-3"
+        >
           {meta.variants?.map((variant) => {
             const isSelected = selectedVariant === variant.code;
             const installment = variant.precoCents / variant.parcelas;
@@ -103,17 +130,20 @@ export function ProductCard({
               <button
                 key={variant.code}
                 className={cn(
-                  "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition",
+                  "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition",
                   isSelected
-                    ? "border-[var(--teal)] bg-[var(--teal-dim)] text-[var(--text)]"
+                    ? "border-[var(--teal)] bg-[var(--teal-d)]/20 text-[var(--text)]"
                     : "border-[var(--bd)] bg-[var(--surf)] text-[var(--text2)] hover:border-[var(--teal)]/40"
                 )}
-                onClick={() => onSelect(variant.code)}
+                onClick={() => onSelect(isSelected ? null : variant.code)}
                 type="button"
               >
-                <span className="font-medium">{variant.title}</span>
+                <span className={cn("font-medium", isSelected && "text-[var(--text)]")}>
+                  {variant.title}
+                </span>
                 <span className="text-right">
-                  <span className="block font-semibold text-[var(--text)]">
+                  <span className={cn("block font-semibold", isSelected ? "text-[var(--teal)]" : "text-[var(--text)]")}
+                  >
                     R$ {formatCents(variant.precoCents)}
                   </span>
                   <span className="block text-[10px] text-[var(--text3)]">
