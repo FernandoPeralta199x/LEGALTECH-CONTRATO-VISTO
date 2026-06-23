@@ -33,8 +33,6 @@ from src.modules.pricing.schemas import (
     PricingLineItemSchema,
     PricingSlaRulesSchema,
     ProductOverrideSchema,
-    ProductVariantLineItemSchema,
-    ProductVariantOverrideSchema,
     UpdatePricingConfigRequest,
 )
 
@@ -49,11 +47,9 @@ class _OrgOverrides:
         self,
         *,
         product_overrides: dict[str, int],
-        product_variant_overrides: dict[str, dict[str, dict[str, int | None]]],
         module_overrides: dict[str, int],
     ) -> None:
         self.product_overrides = product_overrides
-        self.product_variant_overrides = product_variant_overrides
         self.module_overrides = module_overrides
 
 
@@ -84,11 +80,6 @@ class PricingService:
         *,
         organization_id: UUID | str | None = None,
     ) -> PricingCatalogSchema:
-        from src.modules.pricing.config import (
-            ModuleMatrixConfig,
-            ProductVariant,
-        )
-
         modules = list(MODULES.values())
 
         overrides = (
@@ -96,7 +87,6 @@ class PricingService:
             if organization_id is not None and self._repository is not None
             else _OrgOverrides(
                 product_overrides={},
-                product_variant_overrides={},
                 module_overrides={},
             )
         )
@@ -123,18 +113,6 @@ class PricingService:
                         modules=module_map,
                         matrix=MATRIX,
                     ),
-                    "variants": tuple(
-                        variant.model_copy(
-                            update={
-                                "price_cents": overrides.product_variant_overrides.get(
-                                    product.code, {}
-                                ).get(variant.code, {}).get(
-                                    "price_cents", variant.price_cents
-                                )
-                            }
-                        )
-                        for variant in (product.variants or ())
-                    ),
                 }
             )
             for product in PRODUCTS.values()
@@ -159,7 +137,6 @@ class PricingService:
         *,
         product: str,
         modules: list[str],
-        variant: str | None = None,
         organization_id: UUID | str | None = None,
     ) -> PricingEstimateSchema:
         """Compute a price/SLA estimate, mirroring the frontend helpers.
@@ -171,10 +148,9 @@ class PricingService:
         The product base price is derived from the modules marked as
         ``required`` for that product in ``MATRIX``.  Therefore only modules
         that are **not** required contribute to ``modules_total_cents``.
-
-        If the product has variants (e.g. meeting tiers), the selected variant
-        price is added to the total.
         """
+        from src.modules.pricing.config import ModuleMatrixConfig
+
         product_meta = PRODUCTS[product]
         product_matrix = MATRIX.get(product, {})
 
@@ -183,7 +159,6 @@ class PricingService:
             if organization_id is not None and self._repository is not None
             else _OrgOverrides(
                 product_overrides={},
-                product_variant_overrides={},
                 module_overrides={},
             )
         )
@@ -223,13 +198,6 @@ class PricingService:
             if not product_matrix.get(module, ModuleMatrixConfig()).required:
                 modules_total += price_cents
 
-        variant_line_item = self._resolve_variant(
-            product=product,
-            variant=variant,
-            overrides=overrides,
-        )
-        variant_price_cents = variant_line_item.price_cents if variant_line_item else 0
-
         sla_hours = product_meta.sla_hours
         if HUMAN_REVIEW_MODULE in unique_modules:
             sla_hours += SLA_HUMAN_REVIEW_EXTRA_HOURS
@@ -238,48 +206,12 @@ class PricingService:
 
         return PricingEstimateSchema(
             product=product,
-            variant=variant_line_item,
             currency=PRICING_CURRENCY,
             base_price_cents=base_price_cents,
             modules=line_items,
             modules_total_cents=modules_total,
-            variant_price_cents=variant_price_cents,
-            total_price_cents=base_price_cents + modules_total + variant_price_cents,
+            total_price_cents=base_price_cents + modules_total,
             sla_hours=sla_hours,
-        )
-
-    def _resolve_variant(
-        self,
-        *,
-        product: str,
-        variant: str | None,
-        overrides: _OrgOverrides,
-    ) -> ProductVariantLineItemSchema | None:
-        """Resolve a selected product variant, applying admin overrides."""
-        product_meta = PRODUCTS[product]
-        if not product_meta.variants:
-            return None
-
-        selected = next(
-            (v for v in product_meta.variants if v.code == variant),
-            None,
-        )
-        if selected is None:
-            selected = product_meta.variants[0]
-
-        variant_overrides = overrides.product_variant_overrides.get(product, {})
-        override = variant_overrides.get(selected.code, {})
-        price_cents = override.get("price_cents", selected.price_cents)
-        installments = override.get("installments", selected.installments)
-        installments = max(1, installments or 1)
-        installment_cents = price_cents // installments
-
-        return ProductVariantLineItemSchema(
-            code=selected.code,
-            title=selected.title,
-            price_cents=price_cents,
-            installments=installments,
-            installment_cents=installment_cents,
         )
 
     # ------------------------------------------------------------------
@@ -301,25 +233,14 @@ class PricingService:
         product_overrides = {
             code: vals["base_price_cents"]
             for code, vals in (config.product_overrides or {}).items()
-        }
-        product_variant_overrides = {
-            code: {
-                variant_code: {
-                    "price_cents": variant_vals.get("price_cents"),
-                    "installments": variant_vals.get("installments"),
-                }
-                for variant_code, variant_vals in (variants or {}).items()
-            }
-            for code, variants in (config.product_variant_overrides or {}).items()
-        }
+        } if config else {}
         module_overrides = {
             code: vals["price_cents"]
             for code, vals in (config.module_overrides or {}).items()
-        }
+        } if config else {}
 
         return _OrgOverrides(
             product_overrides=product_overrides,
-            product_variant_overrides=product_variant_overrides,
             module_overrides=module_overrides,
         )
 
@@ -369,18 +290,6 @@ class PricingService:
                 code: override.model_dump()
                 for code, override in payload.product_overrides.items()
             }
-        product_variant_overrides = None
-        if (
-            "product_variant_overrides" in changes
-            and changes["product_variant_overrides"] is not None
-        ):
-            product_variant_overrides = {
-                code: {
-                    variant_code: variant_override.model_dump()
-                    for variant_code, variant_override in variants.items()
-                }
-                for code, variants in payload.product_variant_overrides.items()
-            }
         module_overrides = None
         if "module_overrides" in changes and changes["module_overrides"] is not None:
             module_overrides = {
@@ -393,7 +302,6 @@ class PricingService:
             updated_by=user_id,
             cases_limit=changes.get("cases_limit", ...),
             product_overrides=product_overrides,
-            product_variant_overrides=product_variant_overrides,
             module_overrides=module_overrides,
             notes=changes.get("notes", ...),
         )
@@ -483,7 +391,6 @@ class PricingService:
             return {
                 "cases_limit": None,
                 "product_overrides": {},
-                "product_variant_overrides": {},
                 "module_overrides": {},
                 "version": 0,
                 "notes": None,
@@ -491,7 +398,6 @@ class PricingService:
         return {
             "cases_limit": config.cases_limit,
             "product_overrides": config.product_overrides or {},
-            "product_variant_overrides": config.product_variant_overrides or {},
             "module_overrides": config.module_overrides or {},
             "version": config.version,
             "notes": config.notes,
@@ -513,7 +419,6 @@ class PricingService:
                 organization_id=parse_uuid(organization_id),
                 cases_limit=None,
                 product_overrides={},
-                product_variant_overrides={},
                 module_overrides={},
                 version=0,
                 notes=None,
@@ -527,13 +432,6 @@ class PricingService:
             product_overrides={
                 code: ProductOverrideSchema(**vals)
                 for code, vals in (config.product_overrides or {}).items()
-            },
-            product_variant_overrides={
-                code: {
-                    variant_code: ProductVariantOverrideSchema(**variant_vals)
-                    for variant_code, variant_vals in (variants or {}).items()
-                }
-                for code, variants in (config.product_variant_overrides or {}).items()
             },
             module_overrides={
                 code: ModuleOverrideSchema(**vals)

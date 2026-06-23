@@ -26,7 +26,6 @@ export type LocalCaseWizardInput = {
   modulos: Record<Modulo, boolean>;
   parties: WizardPartySummary[];
   produto: ProductType;
-  variant?: string | null;
 };
 
 function getLocalStorage(): Storage | null {

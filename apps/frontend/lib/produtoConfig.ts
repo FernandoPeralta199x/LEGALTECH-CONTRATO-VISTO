@@ -26,20 +26,12 @@ export type Modulo =
   | "revisao_humana"
   | "reuniao_equipe";
 
-export type ProductVariant = {
-  code: string;
-  title: string;
-  precoCents: number;
-  parcelas: number;
-};
-
 export type ProdutoMeta = {
   code: string;
   titulo: string;
   descricao: string;
   inclui: string[];
   slaHoras: number;
-  variants?: ProductVariant[];
 };
 
 export type ModuloMeta = {
@@ -76,21 +68,7 @@ export const PRODUTOS: Record<Produto, ProdutoMeta> = {
     titulo: "Reunião com advogado",
     descricao: "Preparação local para uma futura etapa com profissional jurídico.",
     inclui: ["Critérios prévios", "Reunião planejada", "Roteiro para parecer futuro"],
-    slaHoras: 72,
-    variants: [
-      {
-        code: "equipe_especializada",
-        title: "Com equipe especializada",
-        precoCents: 40000,
-        parcelas: 10
-      },
-      {
-        code: "dr_thyago",
-        title: "Com Dr. Thyago",
-        precoCents: 75000,
-        parcelas: 10
-      }
-    ]
+    slaHoras: 72
   }
 };
 

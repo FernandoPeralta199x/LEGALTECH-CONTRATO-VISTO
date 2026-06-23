@@ -53,7 +53,6 @@ def estimate_pricing(
     estimate = service.estimate(
         product=payload.product,
         modules=list(payload.modules),
-        variant=payload.variant,
         organization_id=tenant.organization_id,
     )
     return success_response(dump_model(estimate), source_mode="real")

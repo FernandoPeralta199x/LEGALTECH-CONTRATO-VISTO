@@ -43,17 +43,6 @@ ModuleCode = Literal[
 ]
 
 
-class ProductVariant(BaseModel):
-    """Selectable price variant for a product (e.g. meeting tier)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    code: str
-    title: str
-    price_cents: int = Field(ge=0)
-    installments: int = Field(default=10, ge=1)
-
-
 class ProductMeta(BaseModel):
     """Catalog metadata for a single product (base offering)."""
 
@@ -65,7 +54,6 @@ class ProductMeta(BaseModel):
     includes: tuple[str, ...] = ()
     base_price_cents: int = Field(ge=0)
     sla_hours: int = Field(ge=0)
-    variants: tuple[ProductVariant, ...] = ()
 
 
 class ModuleMeta(BaseModel):
@@ -268,19 +256,5 @@ PRODUCTS: Final[dict[str, ProductMeta]] = {
         ),
         base_price_cents=compute_product_base_price("reuniao_equipe"),
         sla_hours=72,
-        variants=(
-            ProductVariant(
-                code="equipe_especializada",
-                title="Com equipe especializada",
-                price_cents=40000,
-                installments=10,
-            ),
-            ProductVariant(
-                code="dr_thyago",
-                title="Com Dr. Thyago",
-                price_cents=75000,
-                installments=10,
-            ),
-        ),
     ),
 }

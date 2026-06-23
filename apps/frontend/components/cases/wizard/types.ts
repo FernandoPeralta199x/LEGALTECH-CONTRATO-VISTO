@@ -28,7 +28,6 @@ export type WizardState = {
   parties: Party[];
   arquivo: WizardFile | null;
   produto: Produto | null;
-  variant: string | null;
   modulos: Record<Modulo, boolean>;
 };
 

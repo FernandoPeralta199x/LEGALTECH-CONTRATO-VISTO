@@ -67,14 +67,12 @@ export function NewCaseWizard() {
   const [parties, setParties] = useState<Party[]>(() => [newParty()]);
   const [arquivo, setArquivo] = useState<WizardFile | null>(null);
   const [produto, setProduto] = useState<Produto | null>(null);
-  const [variant, setVariant] = useState<string | null>(null);
   const [modulos, setModulos] = useState<Record<Modulo, boolean>>(
     () => ({}) as Record<Modulo, boolean>
   );
 
-  function handleProductChange(next: Produto, selectedVariant: string | null) {
+  function handleProductChange(next: Produto) {
     setProduto(next);
-    setVariant(selectedVariant);
     if (next !== produto) {
       setModulos(defaultModulesFor(next));
     }
@@ -91,18 +89,13 @@ export function NewCaseWizard() {
       return Boolean(produto);
     }
     if (step === 4) {
-      if (!produto) return false;
-      const meta = produto ? PRODUTOS[produto] : null;
-      if (meta?.variants?.length) {
-        return Boolean(variant);
-      }
-      return true;
+      return Boolean(produto);
     }
     if (step === 5) {
       return Boolean(produto && arquivo?.status === "done");
     }
     return false;
-  }, [step, parties, arquivo, produto, variant]);
+  }, [step, parties, arquivo, produto]);
 
   async function handleSubmit() {
     if (!canAdvance || !produto || submitting) return;
@@ -115,8 +108,7 @@ export function NewCaseWizard() {
         idempotencyKey,
         modulos,
         parties,
-        produto,
-        variant
+        produto
       });
 
       if (!result.data.caseId) {
@@ -170,7 +162,6 @@ export function NewCaseWizard() {
           <ProductStep
             onChange={handleProductChange}
             produto={produto}
-            variant={variant}
           />
         )}
         {step === 4 && produto && (
@@ -178,7 +169,6 @@ export function NewCaseWizard() {
             onChange={setModulos}
             produto={produto}
             state={modulos}
-            variant={variant}
           />
         )}
         {step === 5 && produto && (
@@ -187,7 +177,6 @@ export function NewCaseWizard() {
             modulos={modulos}
             parties={parties}
             produto={produto}
-            variant={variant}
           />
         )}
 

@@ -25,7 +25,6 @@ type ReviewStepProps = {
   parties: Party[];
   arquivo: WizardFile | null;
   produto: Produto;
-  variant: string | null;
   modulos: Record<Modulo, boolean>;
 };
 
@@ -48,7 +47,6 @@ export function ReviewStep({
   parties,
   arquivo,
   produto,
-  variant,
   modulos
 }: ReviewStepProps) {
   const matriz = MATRIZ[produto];
@@ -75,7 +73,7 @@ export function ReviewStep({
     let cancelled = false;
     setEstimate((prev) => ({ ...prev, loading: true, error: null }));
 
-    estimatePricing(produto, activeModuleCodes, variant)
+    estimatePricing(produto, activeModuleCodes)
       .then((result) => {
         if (cancelled) return;
         setEstimate({
@@ -96,16 +94,12 @@ export function ReviewStep({
     return () => {
       cancelled = true;
     };
-  }, [produto, activeModuleCodes.join(","), variant]);
-
-  const productMeta = PRODUTOS[produto];
-  const selectedVariant = productMeta.variants?.find((v) => v.code === variant);
+  }, [produto, activeModuleCodes.join(",")]);
 
   // Fallback local: se a API ainda não respondeu ou falhou, use o cálculo
   // local baseado no catálogo estático para não deixar a tela sem valor.
   const localFallbackCents = useMemo(() => {
     const productCents = computeProductBasePrice(produto);
-    const variantCents = selectedVariant?.precoCents ?? 0;
     const optionalTotal = ativos.reduce((sum, modulo) => {
       const remote = matrix[produto]?.[modulo];
       const isRequired =
@@ -113,8 +107,8 @@ export function ReviewStep({
       if (isRequired) return sum;
       return sum + MODULOS[modulo].precoCents;
     }, 0);
-    return productCents + variantCents + optionalTotal;
-  }, [produto, variant, ativos, matrix, selectedVariant]);
+    return productCents + optionalTotal;
+  }, [produto, ativos, matrix]);
 
   const valor = estimate.loading || estimate.error ? localFallbackCents : estimate.totalCents;
   const prazo = estimarPrazoHoras(produto, ativos);
