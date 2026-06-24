@@ -11,9 +11,8 @@ Documento de retomada: o que foi feito, o que esta pendente e como continuar de 
 
 ## Estado do git
 - `origin/main`: contem auth/seguranca + TENANT + registro de modelos + FK seed + mapper.
-- **Local ahead** (falta push): `ADR-0002`, `FIN-READY-DIAG`, `STATUS` (este).
-- **Working tree (NAO commitado):** FIN-01 Increment 1 — `src/models/request.py` (+2 colunas)
-  e `alembic/versions/0012_request_price_snapshot.py`. Salvos em disco; commitar apos validar.
+- **Local ahead** (falta push): `ADR-0002`, `FIN-READY-DIAG`, `STATUS`, **FIN-01 Increment 1** (`a9f6330`).
+- **Working tree:** limpo (so o rascunho `docs/FIX_PLAN_TESTES_PREEXISTENTES.md` nao-rastreado, descartavel).
 
 ## Concluido (verificado)
 - **SAFE-01:** limpeza de EOL, reparo do indice corrompido, `.gitignore` de governanca.
@@ -45,8 +44,9 @@ Documento de retomada: o que foi feito, o que esta pendente e como continuar de 
   `list-cases`/`aggregate`.
 
 ### FIN-01 — snapshot de preco no pedido
-- **Increment 1 (no working tree, validar):** colunas `total_price_cents` + `price_snapshot`
-  no `requests` + migration `0012`. Verificacao:
+- **Increment 1 (CONCLUIDO, verificado, commit `a9f6330`):** colunas `total_price_cents` +
+  `price_snapshot` no `requests` + migration `0012`. Migration aplicada; suite inalterada
+  (14 reds, nada novo quebrado). Comandos de verificacao usados:
   ```powershell
   cd X:\QUOARYA\legaltech-aws\apps\api
   $env:DATABASE_URL="postgresql+psycopg://legaltech:legaltech_dev@localhost:5432/legaltech"
@@ -54,7 +54,7 @@ Documento de retomada: o que foi feito, o que esta pendente e como continuar de 
   .\.venv\Scripts\alembic.exe current        # deve mostrar 0012_request_price_snapshot (head)
   .\.venv\Scripts\python.exe -m unittest discover -s tests -v   # igual a antes (14 reds, nada NOVO)
   ```
-  Se verde: commitar `feat(fin): colunas de snapshot de preco no pedido (FIN-01 fundacao)`.
+  (Feito: commit `a9f6330`.)
 - **Increment 2 (proximo):** em `create_request`, calcular o estimate (server-side, com overrides
   da org) e gravar `total_price_cents` + `price_snapshot = estimate.model_dump()`; expor no
   response (`LegalRequestSchema`). Verificar persistencia no banco.
