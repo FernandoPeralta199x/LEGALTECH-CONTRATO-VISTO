@@ -14,6 +14,30 @@ from src.modules.contracts.operational import (
 ORG_A = "11111111-1111-4111-8111-111111111111"
 ORG_B = "22222222-2222-4222-8222-222222222222"
 USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+
+
+def _ensure_auth_user() -> None:
+    """Semeia (idempotente) o usuario autenticado para satisfazer o FK
+    requests.created_by. organization_id fica NULL (permitido so em users),
+    evitando dependencia de uma organizacao semeada."""
+    from uuid import UUID
+
+    from src.db.session import SessionLocal
+    from src.models.user import User
+
+    with SessionLocal() as db:
+        if db.get(User, UUID(USER_ID)) is None:
+            db.add(
+                User(
+                    id=UUID(USER_ID),
+                    email="dev.operacional@example.test",
+                    name="Dev Operacional",
+                    role="admin",
+                    status="active",
+                    organization_id=None,
+                )
+            )
+            db.commit()
 MOCK_LIMITATION = (
     "Este relatório foi gerado com dados mock/locais para validação do fluxo. "
     "Não deve ser usado como decisão jurídica real."
@@ -56,6 +80,7 @@ class ReportGenerationRoutesTest(unittest.TestCase):
         from src.modules.audit.service import get_audit_log_service
 
         reset_operational_store()
+        _ensure_auth_user()
         self.jwt_verifier = FakeJwtVerifier()
         self.app = create_app()
         self.app.dependency_overrides[get_jwt_verifier] = lambda: self.jwt_verifier

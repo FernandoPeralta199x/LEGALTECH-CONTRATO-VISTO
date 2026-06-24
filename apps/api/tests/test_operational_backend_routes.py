@@ -14,6 +14,30 @@ ORG_B = "22222222-2222-4222-8222-222222222222"
 USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 
 
+def _ensure_auth_user() -> None:
+    """Semeia (idempotente) o usuario autenticado para satisfazer o FK
+    requests.created_by. organization_id fica NULL (permitido so em users),
+    evitando dependencia de uma organizacao semeada."""
+    from uuid import UUID
+
+    from src.db.session import SessionLocal
+    from src.models.user import User
+
+    with SessionLocal() as db:
+        if db.get(User, UUID(USER_ID)) is None:
+            db.add(
+                User(
+                    id=UUID(USER_ID),
+                    email="dev.operacional@example.test",
+                    name="Dev Operacional",
+                    role="admin",
+                    status="active",
+                    organization_id=None,
+                )
+            )
+            db.commit()
+
+
 def auth_headers() -> dict[str, str]:
     return {"Authorization": "Bearer valid-test-token"}
 
@@ -92,6 +116,7 @@ class OperationalRoutesTest(unittest.TestCase):
         from src.modules.audit.service import get_audit_log_service
 
         reset_operational_store()
+        _ensure_auth_user()
         self.jwt_verifier = FakeJwtVerifier()
         self.audit = FakeAuditLogService()
         self.app = create_app()
