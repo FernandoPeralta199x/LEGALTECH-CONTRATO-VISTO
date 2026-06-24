@@ -80,3 +80,7 @@ apps/api/storage/triage_results/
 .claude-flow/
 .swarm/
 .mcp.json
+
+# Governance / planning docs (local only -- contem inventario de vulnerabilidades; nunca versionar)
+/CLAUDE.md
+/PLANO_ACAO_CONSOLIDADO_LEGALTECH_HOPE_AWS_V4.md
