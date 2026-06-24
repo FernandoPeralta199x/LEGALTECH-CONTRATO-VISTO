@@ -21,6 +21,29 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
+def case_to_schema(case: Any) -> CaseSchema:
+    """Map a SQLAlchemy Case ORM object to the operational CaseSchema."""
+    return CaseSchema(
+        id=case.id,
+        request_id=case.request_id,
+        code=case.code or "",
+        organization_id=case.organization_id,
+        created_by=case.created_by,
+        product_type=case.product_type,
+        product_label=case.product_label,
+        title=case.title,
+        description=case.description or "",
+        status=CaseStatus(case.status),
+        progress=case.progress,
+        risk_level=RiskLevel(case.risk_level),
+        recommendation=case.recommendation,
+        source_mode=case.source_mode,
+        is_local_simulation=case.is_local_simulation,
+        created_at=case.created_at,
+        updated_at=case.updated_at,
+    )
+
+
 class OperationalCaseRepository:
     """Bridge between the wizard operational contract and the real Case repository."""
 
@@ -227,25 +250,7 @@ class OperationalCaseRepository:
         )
 
     def _to_schema(self, case: Any) -> CaseSchema:
-        return CaseSchema(
-            id=case.id,
-            request_id=case.request_id,
-            code=case.code or "",
-            organization_id=case.organization_id,
-            created_by=case.created_by,
-            product_type=case.product_type,
-            product_label=case.product_label,
-            title=case.title,
-            description=case.description or "",
-            status=CaseStatus(case.status),
-            progress=case.progress,
-            risk_level=RiskLevel(case.risk_level),
-            recommendation=case.recommendation,
-            source_mode=case.source_mode,
-            is_local_simulation=case.is_local_simulation,
-            created_at=case.created_at,
-            updated_at=case.updated_at,
-        )
+        return case_to_schema(case)
 
 
 def get_operational_case_repository(db: Any) -> OperationalCaseRepository:

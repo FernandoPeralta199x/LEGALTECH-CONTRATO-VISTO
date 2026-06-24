@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from src.models.request import Request, RequestCodeSequence
 from src.modules.contracts.schemas import (
+    CaseSchema,
     CreateRequestPayloadSchema,
     LegalRequestSchema,
     PaginatedResponse,
@@ -159,8 +160,9 @@ class RequestRepository:
         *,
         organization_id: UUID,
         request_id: UUID,
-    ) -> Any | None:
+    ) -> CaseSchema | None:
         from src.models.case import Case
+        from src.modules.contracts.case_bridge import case_to_schema
 
         case = self._db.execute(
             select(Case).where(
@@ -168,7 +170,7 @@ class RequestRepository:
                 Case.organization_id == _as_uuid(organization_id),
             )
         ).scalar_one_or_none()
-        return case
+        return case_to_schema(case) if case is not None else None
 
     def mark_case_created(
         self,
