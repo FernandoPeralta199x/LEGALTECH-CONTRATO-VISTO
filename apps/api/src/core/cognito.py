@@ -97,13 +97,21 @@ class CognitoJWTVerifier:
                 detail="Invalid Cognito token use.",
             )
 
-        if self.settings.cognito_client_id:
-            audiences = self._extract_audience_values(claims)
-            if self.settings.cognito_client_id not in audiences:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid Cognito client id.",
-                )
+        if not self.settings.cognito_client_id:
+            # Fail-closed: sem client id nao ha como validar a audiencia do
+            # token; recusamos em vez de aceitar (evita aceitar tokens de outro
+            # app client do mesmo user pool por configuracao incompleta).
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="Cognito client id is not configured.",
+            )
+
+        audiences = self._extract_audience_values(claims)
+        if self.settings.cognito_client_id not in audiences:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Cognito client id.",
+            )
 
     @staticmethod
     def _extract_audience_values(claims: dict[str, Any]) -> set[str]:
