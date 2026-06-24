@@ -109,9 +109,24 @@ git commit -m "fix(requests): get_request_case retorna CaseSchema via mapper (re
 
 > Este é o trabalho substantivo do PERSIST e exige tracing do fluxo completo + verificação no banco. Estruturado como investigação→migração→verificação, task a task, com o usuário rodando os testes.
 
-- [ ] **Step 1 — Mapear o que cada rota operacional usa (mock vs DB)**
+- [x] **Step 1 — Mapa mock vs DB (CONCLUIDO)**
 
-Investigar `build_operational_repositories` (`operational.py`) e quem o injeta nas rotas de cases/triage/reports. Listar cada operação (criar case, listar, get, triagem, provider_results, report) e se hoje vai para `MockRequestRepository`/`_STORE` ou para o banco. Produzir um mapa `operação → store atual → store alvo (DB)`.
+`build_operational_repositories()` monta 8 repositorios, todos default Mock (`_STORE` em memoria). So `requests`/`cases` aceitam override; os outros 6 sao forcados a mock. Os servicos operacionais chamam `build_operational_repositories()` SEM sessao `db`.
+
+| Operacao | Repo atual | Versao DB existe? |
+|---|---|---|
+| requests | Mock | sim (`RequestRepository`) |
+| cases | Mock | sim (`OperationalCaseRepository`/case_bridge -> `SqlCaseRepository`) |
+| parties | Mock | parcial |
+| documents | Mock | parcial |
+| timeline | Mock | nao |
+| triage | Mock | nao |
+| provider_results | Mock | nao |
+| reports | Mock | nao |
+
+Consumidores em mock: `cases/operational_detail.py`, `cases/operational_list.py`, `provider_results/service.py` (e triage/reports). `RequestService` ja usa o banco -> split-brain.
+
+Implicacao para os proximos steps: alem de implementar os repos DB faltantes, e preciso **threading da sessao `db`** pela cadeia rota->servico->`build_operational_repositories`, e remover o forcamento a mock dos 6 repositorios.
 
 - [ ] **Step 2 — Definir repositórios DB-backed para as operações ainda em memória**
 
