@@ -39,8 +39,8 @@ class CreatedAtMixin:
 
 
 class OrganizationScopedMixin:
-    organization_id: Mapped[PythonUUID | None] = mapped_column(
+    organization_id: Mapped[PythonUUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("organizations.id"),
-        nullable=True,
+        nullable=False,
     )

@@ -1,23 +1,31 @@
 from datetime import datetime
+from uuid import UUID as PythonUUID
 
-from sqlalchemy import DateTime, Index, String, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import DateTime, ForeignKey, Index, String, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.db.base import Base
 from src.models.mixins import (
-    OrganizationScopedMixin,
     TimestampMixin,
     UUIDPrimaryKeyMixin,
 )
 
 
-class User(OrganizationScopedMixin, UUIDPrimaryKeyMixin, TimestampMixin, Base):
+class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "users"
     __table_args__ = (
         Index("idx_users_organization_id", "organization_id"),
         Index("idx_users_org_email", "organization_id", "email", unique=True),
         Index("idx_users_org_role", "organization_id", "role"),
+    )
+
+    # AUTH-03: usuario pode existir sem tenant (pending_approval) ate convite/
+    # aprovacao/claim Cognito; por isso organization_id e nullable so em users.
+    organization_id: Mapped[PythonUUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id"),
+        nullable=True,
     )
 
     email: Mapped[str] = mapped_column(String(255), nullable=False)

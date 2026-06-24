@@ -32,8 +32,9 @@ class ModelMetadataTest(unittest.TestCase):
     def test_sensitive_tables_have_organization_id(self) -> None:
         import src.models  # noqa: F401
 
-        sensitive_tables = {
-            "users",
+        # AUTH-03: users.organization_id e nullable por design (pending_approval).
+        # As demais entidades tenant exigem NOT NULL para isolamento multi-tenant.
+        tenant_tables = {
             "roles_permissions",
             "clients",
             "case_parties",
@@ -48,11 +49,15 @@ class ModelMetadataTest(unittest.TestCase):
             "reports",
         }
 
-        for table_name in sensitive_tables:
+        for table_name in tenant_tables:
             with self.subTest(table=table_name):
                 table = Base.metadata.tables[table_name]
                 self.assertIn("organization_id", table.c)
                 self.assertFalse(table.c.organization_id.nullable)
+
+        users = Base.metadata.tables["users"]
+        self.assertIn("organization_id", users.c)
+        self.assertTrue(users.c.organization_id.nullable)
 
     def test_mutable_tables_have_timestamps(self) -> None:
         import src.models  # noqa: F401
