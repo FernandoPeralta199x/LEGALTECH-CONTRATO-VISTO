@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (api)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: legaltech
+          POSTGRES_USER: legaltech
+          POSTGRES_PASSWORD: legaltech_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U legaltech -d legaltech"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://legaltech:legaltech_dev@localhost:5432/legaltech
+      APP_ENV: test
+      AUTH_PROVIDER: dev_jwt
+      DEV_JWT_ENABLED: "true"
+      DEV_JWT_SECRET: fictitious-local-dev-secret-32-bytes-minimum
+      EMAIL_BACKEND: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run migrations
+        run: alembic upgrade head
+      - name: Seed example organization
+        run: psql "postgresql://legaltech:legaltech_dev@localhost:5432/legaltech" -f ../../database/local/seed_example_organization.sql
+      - name: Seed roles/permissions
+        run: >-
+          python -m src.modules.admin.seed_roles_permissions
+          --organization-id 11111111-1111-4111-8111-111111111111
+          --actor-user-id 22222222-2222-4222-8222-222222222222
+      # Informativo ate o PERSIST (Task 2 / ADR-0002) zerar os 14 reds conhecidos.
+      # Quando a suite ficar verde, remover o continue-on-error para virar bloqueante.
+      - name: Run tests (baseline — informativo)
+        continue-on-error: true
+        run: python -m unittest discover -s tests -v
+
+  frontend:
+    name: Frontend (web)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm ci
+      # Informativos enquanto o debito pre-existente nao zera (typecheck ~139 erros;
+      # lint a confirmar em ambiente limpo). Tornar bloqueantes conforme ficam verdes.
+      - name: Lint (informativo)
+        continue-on-error: true
+        run: npm run lint
+      - name: Typecheck (informativo)
+        continue-on-error: true
+        run: npm run typecheck
+      - name: Tests (informativo)
+        continue-on-error: true
+        run: npm test
