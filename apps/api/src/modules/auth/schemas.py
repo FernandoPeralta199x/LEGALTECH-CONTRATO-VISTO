@@ -94,7 +94,7 @@ class RegisterResponse(BaseModel):
 
 
 class VerifyEmailResponse(BaseModel):
-    data: AuthTokenResponse
+    data: dict[str, Any]
 
 
 class LoginResponse(BaseModel):

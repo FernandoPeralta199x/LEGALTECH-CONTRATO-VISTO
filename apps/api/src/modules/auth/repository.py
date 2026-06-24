@@ -69,6 +69,20 @@ class UserRepository:
         self._db.flush()
         return user
 
+    def mark_email_confirmed_pending_approval(self, user: User) -> User:
+        """AUTH-03/C-02: confirma o e-mail sem atribuir tenant.
+
+        O usuario fica ``pending_approval`` e mantem ``organization_id`` como
+        ``None`` ate ser convidado/aprovado (TENANT-01) ou vinculado por claim
+        Cognito. Nenhuma organizacao default e atribuida aqui.
+        """
+        user.status = "pending_approval"
+        user.email_verified_at = datetime.now(UTC)
+        user.verification_token_hash = None
+        user.verification_token_expires_at = None
+        self._db.flush()
+        return user
+
     def get_by_id(self, user_id: str) -> User:
         user = (
             self._db.query(User)

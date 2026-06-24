@@ -210,18 +210,20 @@ class AuthService:
         if not hmac.compare_digest(expected_hash, user.verification_token_hash):
             raise InvalidVerificationTokenError("Token de verificação inválido.")
 
-        # Local dev only: assign the seeded default organization so the user can
-        # immediately use the platform. In production this step must be replaced
-        # by admin approval or invite-based tenant assignment.
-        organization_id = self._repository.get_default_organization_id()
+        # AUTH-03 / C-02: confirmar o e-mail NAO concede tenant nem sessao.
+        # O usuario permanece sem organizacao ate ser convidado/aprovado
+        # (TENANT-01) ou vinculado por claim Cognito. Nenhum token e emitido.
+        self._repository.mark_email_confirmed_pending_approval(user)
 
-        self._repository.mark_email_verified(
-            user,
-            organization_id=organization_id,
-        )
-
-        access_token = self._issue_dev_jwt(user)
-        return self._build_token_response(user, access_token)
+        return {
+            "user_id": str(user.id),
+            "email": user.email,
+            "status": user.status,
+            "message": (
+                "E-mail confirmado. Sua conta aguarda aprovacao ou vinculo a "
+                "uma organizacao antes de acessar a plataforma."
+            ),
+        }
 
     def login(self, *, email: str, password: str) -> dict:
         self._ensure_local_auth_enabled()
