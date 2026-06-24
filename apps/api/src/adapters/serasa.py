@@ -27,7 +27,7 @@ class MockSerasaAdapter:
     """Implementacao local com dados ficticios."""
 
     async def check_credit(self, cpf_cnpj: str) -> AdapterResult:
-        logger.info("MockSerasa.check_credit cpf_cnpj=%s", cpf_cnpj[:6])
+        logger.info("MockSerasa.check_credit (documento omitido por LGPD)")
         return AdapterResult(
             success=True,
             source="mock",

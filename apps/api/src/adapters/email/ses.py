@@ -6,6 +6,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from src.adapters.email.base import EmailSender
+from src.modules.common.pii import mask_email
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +46,14 @@ class SesEmailSender(EmailSender):
             logger.info(
                 "[EMAIL-SES] MessageId=%s to=%s subject=%s",
                 response.get("MessageId", "unknown"),
-                recipient,
+                mask_email(recipient),
                 subject,
             )
         except ClientError as exc:
             error_code = exc.response.get("Error", {}).get("Code", "Unknown")
             logger.warning(
                 "[EMAIL-SES] Failed to send to %s: %s",
-                recipient,
+                mask_email(recipient),
                 error_code,
             )
             raise

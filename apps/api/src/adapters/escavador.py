@@ -31,7 +31,7 @@ class MockEscavadorAdapter:
     """Implementacao local com dados ficticios."""
 
     async def search_lawsuits(self, cpf_cnpj: str) -> AdapterResult:
-        logger.info("MockEscavador.search_lawsuits cpf_cnpj=%s", cpf_cnpj[:6])
+        logger.info("MockEscavador.search_lawsuits (documento omitido por LGPD)")
         return AdapterResult(
             success=True,
             source="mock",

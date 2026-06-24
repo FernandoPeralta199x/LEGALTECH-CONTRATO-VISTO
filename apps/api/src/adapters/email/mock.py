@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from src.adapters.email.base import EmailSender
+from src.modules.common.pii import mask_email
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class MockEmailSender(EmailSender):
         logger.info(
             "[EMAIL-MOCK] Simulated delivery to %s | subject=%s | "
             "text_chars=%d | html_chars=%d",
-            recipient,
+            mask_email(recipient),
             subject,
             len(text_body),
             len(html_body) if html_body else 0,
