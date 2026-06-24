@@ -94,7 +94,7 @@ export function ReviewStep({
     return () => {
       cancelled = true;
     };
-  }, [produto, activeModuleCodes.join(",")]);
+  }, [produto, activeModuleCodes]);
 
   // Fallback local: se a API ainda não respondeu ou falhou, use o cálculo
   // local baseado no catálogo estático para não deixar a tela sem valor.
