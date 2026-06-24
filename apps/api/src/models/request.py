@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.db.base import Base
@@ -37,6 +38,9 @@ class Request(Base, OrganizationScopedMixin):
         ForeignKey("cases.id"),
         nullable=True,
     )
+    # FIN-01: snapshot de preco congelado na criacao do pedido (centavos inteiros).
+    total_price_cents: Mapped[int | None] = mapped_column(Integer(), nullable=True)
+    price_snapshot: Mapped[dict | None] = mapped_column(JSONB(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(UTC),
