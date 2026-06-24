@@ -162,8 +162,6 @@ class MockAIReportProvider:
     ) -> ReportRecommendation:
         if confidence < 0.45 or len(missing_information) >= 2 or errors:
             return ReportRecommendation.HUMAN_REVIEW_REQUIRED
-        if missing_information:
-            return ReportRecommendation.PROCEED_WITH_CAUTION
         return ReportRecommendation.PROCEED_WITH_CAUTION
 
     @staticmethod
