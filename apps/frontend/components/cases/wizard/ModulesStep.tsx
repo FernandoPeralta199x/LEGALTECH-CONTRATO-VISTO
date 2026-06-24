@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import {
   usePricingLookup,
@@ -26,16 +26,19 @@ type ModulesStepProps = {
 };
 
 export function ModulesStep({ produto, state, onChange }: ModulesStepProps) {
-  const matriz = MATRIZ[produto];
-  const modulos = Object.keys(matriz) as Modulo[];
+  const matriz = useMemo(() => MATRIZ[produto], [produto]);
+  const modulos = useMemo(() => Object.keys(matriz) as Modulo[], [matriz]);
   const { products, modules } = usePricingLookup();
   const matrix = usePricingMatrix();
 
-  const isRequired = (modulo: Modulo): boolean => {
-    const remote = matrix[produto]?.[modulo];
-    if (remote) return remote.required === true || remote.obrigatorio === true;
-    return matriz[modulo]?.obrigatorio === true;
-  };
+  const isRequired = useCallback(
+    (modulo: Modulo): boolean => {
+      const remote = matrix[produto]?.[modulo];
+      if (remote) return remote.required === true || remote.obrigatorio === true;
+      return matriz[modulo]?.obrigatorio === true;
+    },
+    [matrix, produto, matriz]
+  );
 
   const ativos = useMemo(
     () => modulos.filter((m) => state[m]),
@@ -59,7 +62,7 @@ export function ModulesStep({ produto, state, onChange }: ModulesStepProps) {
       return sum + price;
     }, 0);
     return productCents + optionalTotal;
-  }, [ativos, modules, produto, productCents]);
+  }, [ativos, modules, produto, productCents, isRequired]);
 
   const prazo = useMemo(() => estimarPrazoHoras(produto, ativos), [produto, ativos]);
 
