@@ -232,6 +232,25 @@ class ClientsRoutesTest(unittest.TestCase):
             self.service.calls[0],
         )
 
+    def test_list_clients_does_not_leak_pii(self) -> None:
+        response = self.client.get("/api/v1/clients", headers=auth_headers())
+
+        self.assertEqual(200, response.status_code)
+        item = response.json()["data"][0]
+        self.assertEqual("Cliente Teste", item["name"])
+        self.assertIn("document_masked", item)
+        for sensitive in (
+            "cpf",
+            "cnpj",
+            "rg",
+            "birth_date",
+            "email",
+            "phone",
+            "address",
+            "document",
+        ):
+            self.assertNotIn(sensitive, item)
+
     def test_create_client_rejects_frontend_organization_id(self) -> None:
         response = self.client.post(
             "/api/v1/clients",

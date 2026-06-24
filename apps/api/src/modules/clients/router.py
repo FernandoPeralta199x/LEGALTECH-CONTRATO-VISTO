@@ -76,6 +76,32 @@ def serialize_client(client) -> dict:
     return data
 
 
+def serialize_client_summary(client) -> dict:
+    """LGPD-01: versao enxuta para listas/cards — remove PII desnecessaria.
+
+    Mantem apenas identificacao nao-sensivel (nome, documento mascarado, tipo).
+    """
+    data = serialize_client(client)
+    for sensitive in (
+        "document",
+        "document_number",
+        "cpf",
+        "cnpj",
+        "rg",
+        "birth_date",
+        "email",
+        "phone",
+        "address",
+        "full_name",
+        "legal_name",
+        "company_name",
+        "trade_name",
+        "metadata",
+    ):
+        data.pop(sensitive, None)
+    return data
+
+
 def request_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
@@ -110,7 +136,7 @@ def list_clients(
         user_agent=request.headers.get("user-agent"),
     )
 
-    return success_response([serialize_client(client) for client in clients])
+    return success_response([serialize_client_summary(client) for client in clients])
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
