@@ -19,6 +19,7 @@ from src.modules.auth.service import (
     EmailNotVerifiedError,
     InvalidCredentialsError,
     InvalidVerificationTokenError,
+    LocalAuthDisabledError,
     SelfRegistrationBlockedRoleError,
     VerificationExpiredError,
     get_auth_service,
@@ -57,6 +58,11 @@ def register(
             role=payload.role,
         )
         return success_response(result)
+    except LocalAuthDisabledError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not Found",
+        ) from exc
     except EmailAlreadyRegisteredError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -81,6 +87,11 @@ def verify_email(
             token=payload.token,
         )
         return success_response(result)
+    except LocalAuthDisabledError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not Found",
+        ) from exc
     except (InvalidVerificationTokenError, VerificationExpiredError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -105,6 +116,11 @@ def login(
             password=payload.password,
         )
         return success_response(result)
+    except LocalAuthDisabledError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not Found",
+        ) from exc
     except (InvalidCredentialsError, EmailNotVerifiedError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -50,6 +50,10 @@ class VerificationExpiredError(AuthServiceError):
     pass
 
 
+class LocalAuthDisabledError(AuthServiceError):
+    pass
+
+
 class AuthService:
     def __init__(
         self,
@@ -109,6 +113,15 @@ class AuthService:
         base = self._settings.frontend_base_url.rstrip("/")
         return f"{base}/verify-email?email={email}&token={token}"
 
+    def _ensure_local_auth_enabled(self) -> None:
+        settings = self._settings
+        if not (
+            settings.app_env == "local"
+            and settings.auth_provider == "dev_jwt"
+            and settings.dev_jwt_enabled
+        ):
+            raise LocalAuthDisabledError("Not Found")
+
     def register(
         self,
         *,
@@ -117,6 +130,7 @@ class AuthService:
         password: str,
         role: str = DEFAULT_SELF_REGISTRATION_ROLE,
     ) -> dict:
+        self._ensure_local_auth_enabled()
         if role not in SELF_REGISTRATION_ROLES:
             raise SelfRegistrationBlockedRoleError(
                 f"Papel '{role}' não é permitido para cadastro público."
@@ -178,6 +192,7 @@ class AuthService:
         )
 
     def verify_email(self, *, email: str, token: str) -> dict:
+        self._ensure_local_auth_enabled()
         if not token or len(token) < 8:
             raise InvalidVerificationTokenError("Token de verificação inválido.")
 
@@ -209,6 +224,7 @@ class AuthService:
         return self._build_token_response(user, access_token)
 
     def login(self, *, email: str, password: str) -> dict:
+        self._ensure_local_auth_enabled()
         user = self._repository.get_by_email(email)
         if not user:
             raise InvalidCredentialsError("E-mail ou senha inválidos.")
