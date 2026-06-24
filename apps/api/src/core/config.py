@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     app_version: str = Field(default="0.1.0", alias="APP_VERSION")
     enable_docs: bool = Field(default=True, alias="ENABLE_DOCS")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
     cors_allowed_origins: str = Field(
         default=(
             "http://localhost:3000,"

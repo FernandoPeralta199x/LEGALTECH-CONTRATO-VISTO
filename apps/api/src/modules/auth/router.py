@@ -24,6 +24,7 @@ from src.modules.auth.service import (
     VerificationExpiredError,
     get_auth_service,
 )
+from src.core.rate_limit import rate_limit
 from src.modules.common.responses import success_response
 
 
@@ -44,7 +45,11 @@ def get_me(
     )
 
 
-@router.post("/auth/register", response_model=RegisterResponse)
+@router.post(
+    "/auth/register",
+    response_model=RegisterResponse,
+    dependencies=[Depends(rate_limit("auth_register"))],
+)
 def register(
     payload: RegisterRequest,
     db: Annotated[Session, Depends(get_db)],
@@ -75,7 +80,11 @@ def register(
         ) from exc
 
 
-@router.post("/auth/verify-email", response_model=VerifyEmailResponse)
+@router.post(
+    "/auth/verify-email",
+    response_model=VerifyEmailResponse,
+    dependencies=[Depends(rate_limit("auth_verify"))],
+)
 def verify_email(
     payload: VerifyEmailRequest,
     db: Annotated[Session, Depends(get_db)],
@@ -104,7 +113,11 @@ def verify_email(
         ) from exc
 
 
-@router.post("/auth/login", response_model=LoginResponse)
+@router.post(
+    "/auth/login",
+    response_model=LoginResponse,
+    dependencies=[Depends(rate_limit("auth_login"))],
+)
 def login(
     payload: LoginRequest,
     db: Annotated[Session, Depends(get_db)],
