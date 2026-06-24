@@ -137,7 +137,7 @@ test("apiClient handles non-standard error envelopes without undefined message a
 
   await assert.rejects(
     () => apiClient.get<unknown>("/api/v1/cases/case-local-missing"),
-    (error) => {
+    (error: unknown) => {
       assert.equal(error instanceof ApiClientError, true);
       assert.equal((error as ApiClientError).code, "HTTP_ERROR");
       assert.equal((error as ApiClientError).message, "Erro HTTP 404.");

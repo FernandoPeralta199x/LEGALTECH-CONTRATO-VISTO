@@ -140,10 +140,11 @@ test("uploadDocument sends multipart payload through apiClient without organizat
   assert.match(requestUrl, /\/api\/v1\/documents\/upload$/);
   assert.equal(authorizationHeader, "Bearer valid.dev.jwt");
   assert.ok(requestBody instanceof FormData);
-  assert.equal(requestBody.get("case_id"), "case-api-1");
-  assert.equal(requestBody.get("file"), file);
-  assert.equal(requestBody.get("organization_id"), null);
-  assert.deepEqual(JSON.parse(String(requestBody.get("metadata"))), {
+  const form = requestBody as FormData;
+  assert.equal(form.get("case_id"), "case-api-1");
+  assert.equal(form.get("file"), file);
+  assert.equal(form.get("organization_id"), null);
+  assert.deepEqual(JSON.parse(String(form.get("metadata"))), {
     notes: "Teste local"
   });
 });
