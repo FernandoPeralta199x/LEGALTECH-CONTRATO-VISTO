@@ -25,6 +25,9 @@ class ModelMetadataTest(unittest.TestCase):
             "document_embeddings",
             "human_reviews",
             "reports",
+            "pricing_configs",
+            "requests",
+            "request_code_sequences",
         }
 
         self.assertEqual(expected_tables, set(Base.metadata.tables))
@@ -63,6 +66,8 @@ class ModelMetadataTest(unittest.TestCase):
         import src.models  # noqa: F401
 
         for table_name, table in Base.metadata.tables.items():
+            if table_name == "request_code_sequences":
+                continue  # tabela contadora sem timestamps por design
             with self.subTest(table=table_name):
                 self.assertIn("created_at", table.c)
                 self.assertFalse(table.c.created_at.nullable)
@@ -80,6 +85,8 @@ class ModelMetadataTest(unittest.TestCase):
         import src.models  # noqa: F401
 
         for table_name, table in Base.metadata.tables.items():
+            if table_name == "request_code_sequences":
+                continue  # tabela contadora: PK e (year) por design
             with self.subTest(table=table_name):
                 primary_key = inspect(table).primary_key
                 self.assertEqual(1, len(primary_key.columns))

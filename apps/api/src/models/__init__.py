@@ -11,6 +11,7 @@ from src.models.human_review import HumanReview
 from src.models.organization import Organization
 from src.models.pricing_config import PricingConfig
 from src.models.report import Report
+from src.models.request import Request, RequestCodeSequence
 from src.models.role_permission import RolePermission
 from src.models.user import User
 
@@ -28,6 +29,8 @@ __all__ = [
     "Organization",
     "PricingConfig",
     "Report",
+    "Request",
+    "RequestCodeSequence",
     "RolePermission",
     "User",
 ]
