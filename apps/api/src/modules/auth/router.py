@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -7,11 +7,8 @@ from src.core.security import AuthenticatedUser, get_current_user
 from src.db.session import get_db
 from src.modules.auth.schemas import (
     LoginRequest,
-    LoginResponse,
     RegisterRequest,
-    RegisterResponse,
     VerifyEmailRequest,
-    VerifyEmailResponse,
 )
 from src.modules.auth.service import (
     AuthServiceError,
@@ -47,13 +44,12 @@ def get_me(
 
 @router.post(
     "/auth/register",
-    response_model=RegisterResponse,
     dependencies=[Depends(rate_limit("auth_register"))],
 )
 def register(
     payload: RegisterRequest,
     db: Annotated[Session, Depends(get_db)],
-) -> RegisterResponse:
+) -> dict[str, Any]:
     service = get_auth_service(db)
     try:
         result = service.register(
@@ -82,13 +78,12 @@ def register(
 
 @router.post(
     "/auth/verify-email",
-    response_model=VerifyEmailResponse,
     dependencies=[Depends(rate_limit("auth_verify"))],
 )
 def verify_email(
     payload: VerifyEmailRequest,
     db: Annotated[Session, Depends(get_db)],
-) -> VerifyEmailResponse:
+) -> dict[str, Any]:
     service = get_auth_service(db)
     try:
         result = service.verify_email(
@@ -115,13 +110,12 @@ def verify_email(
 
 @router.post(
     "/auth/login",
-    response_model=LoginResponse,
     dependencies=[Depends(rate_limit("auth_login"))],
 )
 def login(
     payload: LoginRequest,
     db: Annotated[Session, Depends(get_db)],
-) -> LoginResponse:
+) -> dict[str, Any]:
     service = get_auth_service(db)
     try:
         result = service.login(
