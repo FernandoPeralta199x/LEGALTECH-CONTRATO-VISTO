@@ -68,13 +68,14 @@ jobs:
           node-version: "22"
       - name: Install dependencies
         run: npm ci
-      # Informativos enquanto o debito pre-existente nao zera (typecheck ~139 erros;
-      # lint a confirmar em ambiente limpo). Tornar bloqueantes conforme ficam verdes.
+      # Lint informativo: 5 errors de react-hooks/set-state-in-effect pre-existentes
+      # (CurrencyInput, NotificationBell, ReviewStep, PricingCatalogContext,
+      # admin/pricing/page). Tornar bloqueante quando os 5 sitios forem corrigidos.
       - name: Lint (informativo)
         continue-on-error: true
         run: npm run lint
-      - name: Typecheck (informativo)
-        continue-on-error: true
+      # Typecheck bloqueante: suite limpa confirmada no CI run #3 (f2ebe88).
+      - name: Typecheck
         run: npm run typecheck
       - name: Tests (informativo)
         continue-on-error: true
