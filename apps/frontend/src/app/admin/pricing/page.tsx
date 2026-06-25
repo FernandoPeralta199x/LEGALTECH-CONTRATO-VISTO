@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -67,41 +67,44 @@ export default function AdminPricingPage() {
   >({});
   const [notes, setNotes] = useState("");
 
-  const loadData = useCallback(async () => {
-    try {
-      const [cat, cfg, lim] = await Promise.all([
-        getPricingCatalog(),
-        getPricingConfig(),
-        checkCasesLimit(),
-      ]);
-      setCatalog(cat);
-      setConfig(cfg);
-      setLimitCheck(lim);
-
-      const unlimited = cfg.cases_limit === null;
-      setUnlimitedCases(unlimited);
-      setCasesLimit(unlimited ? null : cfg.cases_limit);
-
-      setModuleOverrides(
-        Object.fromEntries(
-          Object.entries(cfg.module_overrides).map(([k, v]) => [k, v.price_cents])
-        )
-      );
-
-      setNotes(cfg.notes ?? "");
-      setStatus("idle");
-    } catch (err) {
-      setMessage({
-        text: errorMessage(err, "API local indisponível. Verifique se o backend e o PostgreSQL estão rodando e se você está logado."),
-        type: "error",
-      });
-      setStatus("error");
-    }
-  }, [setMessage]);
-
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    let cancelled = false;
+    Promise.all([
+      getPricingCatalog(),
+      getPricingConfig(),
+      checkCasesLimit(),
+    ])
+      .then(([cat, cfg, lim]) => {
+        if (cancelled) return;
+        setCatalog(cat);
+        setConfig(cfg);
+        setLimitCheck(lim);
+
+        const unlimited = cfg.cases_limit === null;
+        setUnlimitedCases(unlimited);
+        setCasesLimit(unlimited ? null : cfg.cases_limit);
+
+        setModuleOverrides(
+          Object.fromEntries(
+            Object.entries(cfg.module_overrides).map(([k, v]) => [k, v.price_cents])
+          )
+        );
+
+        setNotes(cfg.notes ?? "");
+        setStatus("idle");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setMessage({
+          text: errorMessage(err, "API local indisponível. Verifique se o backend e o PostgreSQL estão rodando e se você está logado."),
+          type: "error",
+        });
+        setStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [setMessage]);
 
   const hasChanges = useMemo(() => {
     if (!config) return false;
