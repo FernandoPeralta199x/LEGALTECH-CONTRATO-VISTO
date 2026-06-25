@@ -206,6 +206,14 @@ class OperationalRoutesTest(unittest.TestCase):
         self.assertEqual(created["id"], case["request_id"])
         self.assertEqual("analise_contratual", case["product_type"])
 
+    def test_requests_list_returns_all_when_multiple_in_org(self) -> None:
+        # Regressao M-01: GET /requests dava 500 (MultipleResultsFound) com >=2 pedidos.
+        self.create_request("Pedido Um")
+        self.create_request("Pedido Dois")
+        response = self.client.get("/api/v1/requests", headers=auth_headers())
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(2, response.json()["data"]["total"])
+
     def test_wizard_submit_creates_operational_case_resources_and_triage_plan(self) -> None:
         payload = {
             "product_type": "analise_contratual",

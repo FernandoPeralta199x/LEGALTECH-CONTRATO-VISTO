@@ -125,10 +125,6 @@ class RequestRepository:
         stmt = stmt.offset((max(page, 1) - 1) * page_size).limit(page_size)
         requests = self._db.execute(stmt).scalars().all()
 
-        total_stmt = select(Request).where(Request.organization_id == organization_uuid)
-        total = self._db.execute(total_stmt).scalar_one_or_none()
-        total_count = len(list(requests)) if total is None else 0  # placeholder
-        # Proper count query below
         from sqlalchemy import func
 
         count_stmt = select(func.count(Request.id)).where(
