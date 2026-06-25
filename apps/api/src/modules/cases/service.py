@@ -116,10 +116,19 @@ class CaseService:
         if client is None:
             raise ResourceNotFoundError("Client not found.")
 
+        # Campos operacionais NOT NULL (migration 0009): derivar do payload com
+        # fallback do case_type, pois CaseCreate (legado) nao os exige.
+        metadata = dict(payload.metadata or {})
+        title = str(metadata.get("title") or payload.case_type)
+        product_type = str(metadata.get("product_type") or payload.case_type)
+        product_label = str(metadata.get("product_label") or product_type)
         case = Case(
             organization_id=organization_uuid,
             client_id=payload.client_id,
             case_type=payload.case_type,
+            product_type=product_type,
+            product_label=product_label,
+            title=title,
             status="draft",
             priority=payload.priority,
             created_by=parse_uuid(user_id),
