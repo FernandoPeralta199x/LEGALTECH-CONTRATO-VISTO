@@ -56,7 +56,7 @@ export default function AdminPricingPage() {
   const [catalog, setCatalog] = useState<PricingCatalog | null>(null);
   const [config, setConfig] = useState<PricingConfig | null>(null);
   const [limitCheck, setLimitCheck] = useState<CasesLimitCheck | null>(null);
-  const [status, setStatus] = useState<Status>("idle");
+  const [status, setStatus] = useState<Status>("loading");
   const { message, setMessage } = useToast();
 
   // Form state
@@ -68,7 +68,6 @@ export default function AdminPricingPage() {
   const [notes, setNotes] = useState("");
 
   const loadData = useCallback(async () => {
-    setStatus("loading");
     try {
       const [cat, cfg, lim] = await Promise.all([
         getPricingCatalog(),
