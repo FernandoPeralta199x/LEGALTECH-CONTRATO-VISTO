@@ -54,39 +54,42 @@ export function ReviewStep({
   const inativos = (Object.keys(matriz) as Modulo[]).filter((m) => !modulos[m]);
   const matrix = usePricingMatrix();
 
-  const [estimate, setEstimate] = useState<{
-    totalCents: number;
-    loading: boolean;
-    error: string | null;
-  }>({
-    totalCents: 0,
-    loading: true,
-    error: null
-  });
-
   const activeModuleCodes = useMemo(
     () => ativos.map((m) => MODULOS[m].code),
     [ativos]
   );
 
+  // Chave dos inputs do cálculo oficial. Quando muda, o resultado armazenado
+  // deixa de corresponder à requisição atual e o "loading" é derivado no render
+  // (sem setState síncrono no corpo do effect — react-hooks/set-state-in-effect).
+  const requestKey = useMemo(
+    () => `${produto}|${activeModuleCodes.join(",")}`,
+    [produto, activeModuleCodes]
+  );
+
+  const [result, setResult] = useState<{
+    key: string;
+    totalCents: number;
+    error: string | null;
+  } | null>(null);
+
   useEffect(() => {
     let cancelled = false;
-    setEstimate((prev) => ({ ...prev, loading: true, error: null }));
 
     estimatePricing(produto, activeModuleCodes)
-      .then((result) => {
+      .then((data) => {
         if (cancelled) return;
-        setEstimate({
-          totalCents: result.total_price_cents,
-          loading: false,
+        setResult({
+          key: requestKey,
+          totalCents: data.total_price_cents,
           error: null
         });
       })
       .catch((err) => {
         if (cancelled) return;
-        setEstimate({
+        setResult({
+          key: requestKey,
           totalCents: 0,
-          loading: false,
           error: errorMessage(err, "Erro ao calcular preço oficial.")
         });
       });
@@ -94,7 +97,10 @@ export function ReviewStep({
     return () => {
       cancelled = true;
     };
-  }, [produto, activeModuleCodes]);
+  }, [produto, activeModuleCodes, requestKey]);
+
+  const loading = result?.key !== requestKey;
+  const error = loading ? null : result?.error ?? null;
 
   // Fallback local: se a API ainda não respondeu ou falhou, use o cálculo
   // local baseado no catálogo estático para não deixar a tela sem valor.
@@ -109,9 +115,9 @@ export function ReviewStep({
       return sum + MODULOS[modulo].precoCents;
     }, 0);
     return productCents + optionalTotal;
-  }, [produto, ativos, matrix]);
+  }, [produto, ativos, matrix, matriz]);
 
-  const valor = estimate.loading || estimate.error ? localFallbackCents : estimate.totalCents;
+  const valor = loading || error ? localFallbackCents : result?.totalCents ?? 0;
   const prazo = estimarPrazoHoras(produto, ativos);
 
   return (
@@ -206,16 +212,16 @@ export function ReviewStep({
       </Section>
 
       <EstimateCard
-        error={estimate.error}
-        loading={estimate.loading}
+        error={error}
+        loading={loading}
         prazoHoras={prazo}
         valorCents={valor}
       />
 
-      {estimate.error && (
+      {error && (
         <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-xs text-red-200">
           <Info className="mt-0.5 shrink-0" size={14} />
-          <span>{estimate.error} Valor exibido é uma referência local.</span>
+          <span>{error} Valor exibido é uma referência local.</span>
         </div>
       )}
 
