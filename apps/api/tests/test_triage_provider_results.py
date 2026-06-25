@@ -39,6 +39,30 @@ MOCK_LIMITATION = (
 )
 
 
+def _reset_operational_db() -> None:
+    """Isola cada teste: trunca as tabelas operacionais no banco (mantendo
+    organizations/users/roles_permissions semeados)."""
+    from sqlalchemy import text
+
+    from src.db.session import SessionLocal
+
+    keep = {"organizations", "users", "roles_permissions", "alembic_version"}
+    with SessionLocal() as db:
+        tables = db.execute(
+            text("SELECT tablename FROM pg_tables WHERE schemaname='public'")
+        ).scalars().all()
+        targets = [t for t in tables if t not in keep]
+        if targets:
+            db.execute(
+                text(
+                    "TRUNCATE TABLE "
+                    + ", ".join(f'"{t}"' for t in targets)
+                    + " RESTART IDENTITY CASCADE"
+                )
+            )
+            db.commit()
+
+
 def auth_headers() -> dict[str, str]:
     return {"Authorization": "Bearer valid-test-token"}
 
@@ -75,6 +99,7 @@ class TriageProviderResultsRoutesTest(unittest.TestCase):
         from src.modules.audit.service import get_audit_log_service
 
         reset_operational_store()
+        _reset_operational_db()
         _ensure_auth_user()
         self.jwt_verifier = FakeJwtVerifier()
         self.app = create_app()
@@ -90,6 +115,7 @@ class TriageProviderResultsRoutesTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.app.dependency_overrides.clear()
         reset_operational_store()
+        _reset_operational_db()
 
     def create_case(
         self,
