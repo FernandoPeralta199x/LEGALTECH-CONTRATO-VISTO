@@ -22,6 +22,8 @@ const PricingCatalogContext = createContext<PricingCatalogContextValue | null>(
   null
 );
 
+const CATALOG_ERROR = "Erro ao carregar catálogo de preços.";
+
 export function PricingCatalogProvider({
   children,
 }: {
@@ -38,14 +40,27 @@ export function PricingCatalogProvider({
       const data = await getPricingCatalog();
       setCatalog(data);
     } catch (err) {
-      setError(errorMessage(err, "Erro ao carregar catálogo de preços."));
+      setError(errorMessage(err, CATALOG_ERROR));
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    refetch();
+    let cancelled = false;
+    getPricingCatalog()
+      .then((data) => {
+        if (!cancelled) setCatalog(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(errorMessage(err, CATALOG_ERROR));
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
