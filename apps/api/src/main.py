@@ -9,7 +9,7 @@ from src.adapters.serasa import create_serasa_adapter
 from src.adapters.cnj import create_cnj_adapter
 from src.adapters.ocr import create_ocr_adapter
 from src.adapters.ai_analysis import create_ai_analysis_adapter
-from src.core.config import get_settings
+from src.core.config import enforce_production_safety, get_settings
 from src.core.logging import configure_logging
 from src.modules.auth.router import router as auth_router
 from src.modules.audit.router import router as audit_router
@@ -50,14 +50,15 @@ SECURITY_HEADERS = {
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    enforce_production_safety(settings)
     configure_logging(settings.log_level)
 
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
-        docs_url="/docs" if settings.enable_docs else None,
-        redoc_url="/redoc" if settings.enable_docs else None,
-        openapi_url="/openapi.json" if settings.enable_docs else None,
+        docs_url="/docs" if (settings.enable_docs and settings.app_env in {"local", "test"}) else None,
+        redoc_url="/redoc" if (settings.enable_docs and settings.app_env in {"local", "test"}) else None,
+        openapi_url="/openapi.json" if (settings.enable_docs and settings.app_env in {"local", "test"}) else None,
     )
     if settings.cors_origins:
         app.add_middleware(

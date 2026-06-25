@@ -181,6 +181,15 @@ def build_operational_repositories(
     # ADR-0002 (Caminho H): com `db`, requests/cases sao DB-backed (fonte de verdade
     # de status), e o agregado do case compoe os sub-dados do store. Sem `db`,
     # mantem mock (preserva os unit tests que instanciam o builder direto).
+    if db is None and requests is None and cases is None:
+        from src.core.config import get_settings
+
+        app_env = get_settings().app_env
+        if app_env not in {"local", "test"}:
+            raise RuntimeError(
+                f"Fluxo operacional sem 'db' fora de local/test (APP_ENV={app_env}): "
+                "o InMemoryOperationalStore nao pode ser fonte de verdade em staging/prod."
+            )
     scoped_store = store or get_operational_store()
     if db is not None:
         from src.modules.contracts.case_bridge import OperationalCaseRepository

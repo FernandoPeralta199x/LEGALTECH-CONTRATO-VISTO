@@ -252,6 +252,41 @@ class Settings(BaseSettings):
         ]
 
 
+_PRODUCTION_ENVS = frozenset({"staging", "prod", "production"})
+_LOCAL_ENVS = frozenset({"local", "test"})
+
+
+def enforce_production_safety(settings: "Settings") -> None:
+    """Gate fail-closed: em staging/prod, recusa subir com configuracoes que
+    serviriam dado falso, autenticacao de desenvolvimento ou backends nao
+    funcionais. So aplica fora de local/test."""
+    if settings.app_env not in _PRODUCTION_ENVS:
+        return
+    violations: list[str] = []
+    legal_backends = {
+        "AI_ANALYSIS_BACKEND": settings.ai_analysis_backend,
+        "OCR_BACKEND": settings.ocr_backend,
+        "ESCAVADOR_BACKEND": settings.escavador_backend,
+        "SERASA_BACKEND": settings.serasa_backend,
+        "CNJ_BACKEND": settings.cnj_backend,
+    }
+    for name, value in legal_backends.items():
+        if value == "mock":
+            violations.append(f"{name}=mock (serviria dado juridico fabricado)")
+    if settings.email_backend == "mock":
+        violations.append("EMAIL_BACKEND=mock (verificacao de e-mail nao envia)")
+    if settings.auth_provider != "cognito":
+        violations.append(f"AUTH_PROVIDER={settings.auth_provider} (exige cognito fora de local)")
+    if settings.dev_jwt_enabled:
+        violations.append("DEV_JWT_ENABLED=True (autenticacao de desenvolvimento)")
+    if violations:
+        raise RuntimeError(
+            f"Boot bloqueado por seguranca (APP_ENV={settings.app_env}): "
+            + "; ".join(violations)
+            + ". Corrija a configuracao ou use APP_ENV=local para desenvolvimento."
+        )
+
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
