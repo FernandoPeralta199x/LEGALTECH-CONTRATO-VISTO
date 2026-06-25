@@ -214,6 +214,19 @@ class OperationalRoutesTest(unittest.TestCase):
         self.assertEqual(200, response.status_code)
         self.assertEqual(2, response.json()["data"]["total"])
 
+    def test_request_create_persists_price_snapshot(self) -> None:
+        # FIN-01 Inc2 (C-03): o pedido congela o preco na criacao.
+        from uuid import UUID
+
+        from src.models.request import Request
+
+        created = self.create_request("Pedido Com Preco")
+        row = self.db.get(Request, UUID(created["id"]))
+        self.assertIsNotNone(row.total_price_cents)
+        self.assertIsInstance(row.price_snapshot, dict)
+        self.assertIn("total_price_cents", row.price_snapshot)
+        self.assertEqual(row.total_price_cents, row.price_snapshot["total_price_cents"])
+
     def test_wizard_submit_creates_operational_case_resources_and_triage_plan(self) -> None:
         payload = {
             "product_type": "analise_contratual",

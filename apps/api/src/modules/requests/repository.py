@@ -78,6 +78,22 @@ class RequestRepository:
             source_mode=payload.source_mode.value,
             idempotency_key=payload.idempotency_key,
         )
+
+        # FIN-01 Inc2 (C-03): congela o preco do pedido no momento da criacao.
+        try:
+            from src.modules.pricing.service import PricingService
+
+            estimate = PricingService(db=self._db).estimate(
+                product=payload.product_type,
+                modules=payload.selected_modules,
+                organization_id=organization_uuid,
+            )
+            request.total_price_cents = estimate.total_price_cents
+            request.price_snapshot = estimate.model_dump(mode="json")
+        except Exception:
+            # Produto/modulo fora do catalogo nao bloqueia a criacao do pedido.
+            pass
+
         self._db.add(request)
         self._db.flush()
         return self._to_schema(request)
