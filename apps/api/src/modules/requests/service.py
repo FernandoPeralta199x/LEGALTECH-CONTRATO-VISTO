@@ -78,6 +78,11 @@ class RequestService:
                 ),
             )
             self._append_initial_timeline_events(request=request, case=case)
+            self.repositories.requests.mark_case_created(
+                organization_id=organization_uuid,
+                request_id=request.id,
+                case_id=case.id,
+            )
         else:
             case = self.repositories.requests.get_case(
                 organization_id=organization_uuid,

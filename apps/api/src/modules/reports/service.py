@@ -28,8 +28,9 @@ class ReportService:
         repositories: OperationalRepositories | None = None,
         payload_builder: ReportPayloadBuilder | None = None,
         ai_provider: MockAIReportProvider | None = None,
+        db = None,
     ) -> None:
-        self.repositories = repositories or build_operational_repositories()
+        self.repositories = repositories or build_operational_repositories(db=db)
         self.payload_builder = payload_builder or ReportPayloadBuilder()
         self.ai_provider = ai_provider or MockAIReportProvider()
 

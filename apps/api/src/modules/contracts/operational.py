@@ -178,11 +178,16 @@ def build_operational_repositories(
     cases: CaseRepositoryProtocol | None = None,
     db: Session | None = None,
 ) -> OperationalRepositories:
-    # ADR-0002: `db` e o seam para repos DB-backed. Nesta fase de infra o default
-    # e preservado (mock), com ou sem `db`; a migracao incremental (Item 2+) passa
-    # a ramificar em `db` para o caminho DB-backed do agregado do case.
-    _ = db  # threaded para o seam; ainda nao utilizado (mock preservado)
+    # ADR-0002 (Caminho H): com `db`, requests/cases sao DB-backed (fonte de verdade
+    # de status), e o agregado do case compoe os sub-dados do store. Sem `db`,
+    # mantem mock (preserva os unit tests que instanciam o builder direto).
     scoped_store = store or get_operational_store()
+    if db is not None:
+        from src.modules.contracts.case_bridge import OperationalCaseRepository
+        from src.modules.requests.repository import RequestRepository
+
+        requests = requests or RequestRepository(db)
+        cases = cases or OperationalCaseRepository(db, store=scoped_store)
     return OperationalRepositories(
         requests=requests or MockRequestRepository(scoped_store),
         cases=cases or MockCaseRepository(scoped_store),

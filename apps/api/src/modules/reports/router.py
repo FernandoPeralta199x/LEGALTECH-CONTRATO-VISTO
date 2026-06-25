@@ -2,8 +2,10 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from src.core.rbac import require_permission
+from src.db.session import get_db
 from src.core.tenant import TenantContext
 from src.modules.common.responses import success_response
 from src.modules.reports.service import ReportService
@@ -12,8 +14,8 @@ from src.modules.reports.service import ReportService
 router = APIRouter(prefix="/api/v1/cases", tags=["reports"])
 
 
-def get_report_service() -> ReportService:
-    return ReportService()
+def get_report_service(db: Annotated[Session, Depends(get_db)]) -> ReportService:
+    return ReportService(db=db)
 
 
 def dump_model(model) -> dict:
