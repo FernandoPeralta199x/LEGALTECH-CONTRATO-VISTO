@@ -65,6 +65,11 @@ export function CurrencyInput({
 
   useEffect(() => {
     if (isControlled && !focused) {
+      // Sincroniza o texto exibido com a prop controlada apenas fora de foco.
+      // Padrao legitimo de input controlado; o setState fica guardado por !focused
+      // e re-sincroniza no blur (focused nas deps). Refatorar para adjust-in-render
+      // seria behavior-risky na borda digitar->blur sem teste de componente.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDisplay(centsToDisplay(value));
     }
   }, [isControlled, value, focused]);
