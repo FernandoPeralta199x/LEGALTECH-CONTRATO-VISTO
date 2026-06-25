@@ -28,6 +28,9 @@ class ModelMetadataTest(unittest.TestCase):
             "pricing_configs",
             "requests",
             "request_code_sequences",
+            "timeline_events",
+            "triage_modules",
+            "provider_results",
         }
 
         self.assertEqual(expected_tables, set(Base.metadata.tables))
@@ -50,6 +53,9 @@ class ModelMetadataTest(unittest.TestCase):
             "document_embeddings",
             "human_reviews",
             "reports",
+            "timeline_events",
+            "triage_modules",
+            "provider_results",
         }
 
         for table_name in tenant_tables:
@@ -77,6 +83,7 @@ class ModelMetadataTest(unittest.TestCase):
                     "document_chunks",
                     "document_embeddings",
                     "audit_log",
+                    "timeline_events",
                 }:
                     self.assertIn("updated_at", table.c)
                     self.assertFalse(table.c.updated_at.nullable)
@@ -121,6 +128,10 @@ class ModelMetadataTest(unittest.TestCase):
             "idx_human_reviews_org_status",
             "idx_reports_org_case",
             "idx_reports_org_status",
+            "idx_timeline_events_org_case",
+            "idx_triage_modules_org_case",
+            "idx_provider_results_org_case",
+            "idx_provider_results_triage_module",
         }
         actual_indexes = {
             index.name

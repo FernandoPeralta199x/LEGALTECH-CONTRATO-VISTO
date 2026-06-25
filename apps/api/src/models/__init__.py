@@ -10,9 +10,12 @@ from src.models.external_query_cache import ExternalQueryCache
 from src.models.human_review import HumanReview
 from src.models.organization import Organization
 from src.models.pricing_config import PricingConfig
+from src.models.provider_result import ProviderResult
 from src.models.report import Report
 from src.models.request import Request, RequestCodeSequence
 from src.models.role_permission import RolePermission
+from src.models.timeline_event import TimelineEvent
+from src.models.triage_module import TriageModule
 from src.models.user import User
 
 __all__ = [
@@ -28,9 +31,12 @@ __all__ = [
     "HumanReview",
     "Organization",
     "PricingConfig",
+    "ProviderResult",
     "Report",
     "Request",
     "RequestCodeSequence",
     "RolePermission",
+    "TimelineEvent",
+    "TriageModule",
     "User",
 ]
