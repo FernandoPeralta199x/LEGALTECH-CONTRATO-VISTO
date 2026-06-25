@@ -54,30 +54,40 @@ function buildNotices(cases: Case[]): Notice[] {
     }));
 }
 
+async function fetchNotices(): Promise<Notice[]> {
+  try {
+    const result = await listCases();
+    return buildNotices(result.data ?? []);
+  } catch {
+    return [];
+  }
+}
+
 export function NotificationBell() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notices, setNotices] = useState<Notice[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
 
   const unreadCount = notices.filter((n) => !n.read).length;
 
   async function loadNotices() {
     setLoading(true);
-    try {
-      const result = await listCases();
-      const cases = result.data ?? [];
-      setNotices(buildNotices(cases));
-    } catch {
-      setNotices([]);
-    } finally {
-      setLoading(false);
-    }
+    setNotices(await fetchNotices());
+    setLoading(false);
   }
 
   useEffect(() => {
-    loadNotices();
+    let cancelled = false;
+    fetchNotices().then((items) => {
+      if (cancelled) return;
+      setNotices(items);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
