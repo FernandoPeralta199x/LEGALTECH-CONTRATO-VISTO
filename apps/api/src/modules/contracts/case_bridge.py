@@ -48,10 +48,9 @@ def case_to_schema(case: Any) -> CaseSchema:
 class OperationalCaseRepository:
     """Bridge between the wizard operational contract and the real Case repository."""
 
-    def __init__(self, db: Session, store: Any = None) -> None:
+    def __init__(self, db: Session) -> None:
         self._db = db
         self._repo = SqlCaseRepository(db)
-        self._store = store
 
     def create(
         self,
@@ -67,14 +66,7 @@ class OperationalCaseRepository:
                 payload=payload,
             )
         )
-        schema = self._to_schema(case)
-
-        # Mirror the case in the in-memory store so that repositories not yet
-        # ported to SQLAlchemy (timeline, parties, documents, etc.) can reference it.
-        if self._store is not None:
-            self._store.cases[schema.id] = schema
-
-        return schema
+        return self._to_schema(case)
 
     def get(
         self,
@@ -103,59 +95,49 @@ class OperationalCaseRepository:
 
         case_schema = self._to_schema(case)
 
-        # Compoe os sub-dados operacionais (parties, documents, timeline, triage,
-        # provider_results, report) a partir do store em memoria, mantendo o case
-        # do banco como fonte de verdade de status/campos. (ADR-0002 Caminho H.)
-        if self._store is not None:
-            from src.modules.contracts.mock_repositories import MockCaseRepository
-            from src.modules.requests.repository import RequestRepository
+        # Caminho F: compoe o agregado a partir dos repos DB-backed num store
+        # temporario, reusando a derivacao de progresso/summary do MockCaseRepository.
+        from src.modules.contracts.db_repositories import (
+            SqlDocumentRepository,
+            SqlPartyRepository,
+            SqlProviderResultRepository,
+            SqlReportRepository,
+            SqlTimelineRepository,
+            SqlTriageRepository,
+        )
+        from src.modules.contracts.mock_repositories import (
+            InMemoryOperationalStore,
+            MockCaseRepository,
+        )
+        from src.modules.requests.repository import RequestRepository
 
-            # Sincroniza os espelhos do case e do request no store com o banco
-            # (fonte de verdade de status/campos) ANTES de compor, para que a
-            # derivacao de progresso/summary e o agregado usem os dados vivos.
-            self._store.cases[case_schema.id] = case_schema
-            if case_schema.request_id is not None:
-                request_schema = RequestRepository(self._db).get(
-                    organization_id=organization_id,
-                    request_id=case_schema.request_id,
-                )
-                if request_schema is not None:
-                    self._store.requests[request_schema.id] = request_schema
-
-            store_aggregate = MockCaseRepository(self._store).get_aggregate(
+        scope = {"organization_id": organization_id, "case_id": case_id}
+        tmp = InMemoryOperationalStore()
+        tmp.cases[case_schema.id] = case_schema
+        if case_schema.request_id is not None:
+            request_schema = RequestRepository(self._db).get(
                 organization_id=organization_id,
-                case_id=case_id,
+                request_id=case_schema.request_id,
             )
-            if store_aggregate is not None:
-                return store_aggregate
-
-        # Fallback sem store: agregado so com o case, enums alinhados ao mock
-        # (triage_status NOT_STARTED, nunca None -> evita NoneType.value).
-        summary = CaseOperationSummarySchema(
-            case_id=case.id,
-            organization_id=case.organization_id,
-            parties_count=0,
-            documents_count=0,
-            triage_status=ModuleStatus.NOT_STARTED,
-            report_status=ReportStatus.NOT_STARTED,
-            risk_level=RiskLevel(case.risk_level),
-            progress=case.progress,
-            latest_event_at=None,
-            source_mode=case.source_mode,
-            updated_at=case.updated_at,
+            if request_schema is not None:
+                tmp.requests[request_schema.id] = request_schema
+        for party in SqlPartyRepository(self._db).list_by_case(**scope):
+            tmp.parties[party.id] = party
+        for document in SqlDocumentRepository(self._db).list_by_case(**scope):
+            tmp.documents[document.id] = document
+        for event in SqlTimelineRepository(self._db).list_by_case(**scope):
+            tmp.timeline_events[event.id] = event
+        for module in SqlTriageRepository(self._db).list_modules(**scope):
+            tmp.triage_modules[module.id] = module
+        for result in SqlProviderResultRepository(self._db).list_by_case(**scope):
+            tmp.provider_results[result.id] = result
+        report = SqlReportRepository(self._db).get_current(**scope)
+        if report is not None:
+            tmp.reports[report.id] = report
+        return MockCaseRepository(tmp).get_aggregate(
+            organization_id=organization_id,
+            case_id=case_id,
         )
-        return CaseAggregateSchema(
-            case=case_schema,
-            request=None,
-            parties=[],
-            documents=[],
-            timeline=[],
-            triage_modules=[],
-            provider_results=[],
-            report=None,
-            summary=summary,
-        )
-
     def list(
         self,
         *,

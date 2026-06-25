@@ -16,8 +16,9 @@ class TimelineService:
     def __init__(
         self,
         repositories: OperationalRepositories | None = None,
+        db=None,
     ) -> None:
-        self.repositories = repositories or build_operational_repositories()
+        self.repositories = repositories or build_operational_repositories(db=db)
 
     def list_events(
         self,

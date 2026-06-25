@@ -54,6 +54,10 @@ class TriageModule(
         Integer, nullable=False, server_default=text("0")
     )
     error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    result_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    raw_result_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     organization = relationship("Organization")
     case = relationship("Case")

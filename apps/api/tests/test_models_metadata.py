@@ -31,6 +31,9 @@ class ModelMetadataTest(unittest.TestCase):
             "timeline_events",
             "triage_modules",
             "provider_results",
+            "operational_parties",
+            "operational_documents",
+            "operational_reports",
         }
 
         self.assertEqual(expected_tables, set(Base.metadata.tables))
@@ -56,6 +59,9 @@ class ModelMetadataTest(unittest.TestCase):
             "timeline_events",
             "triage_modules",
             "provider_results",
+            "operational_parties",
+            "operational_documents",
+            "operational_reports",
         }
 
         for table_name in tenant_tables:
@@ -132,6 +138,9 @@ class ModelMetadataTest(unittest.TestCase):
             "idx_triage_modules_org_case",
             "idx_provider_results_org_case",
             "idx_provider_results_triage_module",
+            "idx_operational_parties_org_case",
+            "idx_operational_documents_org_case",
+            "idx_operational_reports_org_case",
         }
         actual_indexes = {
             index.name

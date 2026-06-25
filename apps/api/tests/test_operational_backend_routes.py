@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from fastapi.testclient import TestClient
 
 from src.main import create_app
+from src.db.session import SessionLocal, get_db
 from src.modules.contracts.operational import reset_operational_store
 
 
@@ -151,10 +152,13 @@ class OperationalRoutesTest(unittest.TestCase):
             lambda: FakePermissionService()
         )
         self.app.dependency_overrides[get_audit_log_service] = lambda: self.audit
+        self.db = SessionLocal()
+        self.app.dependency_overrides[get_db] = lambda: self.db
         self.client = TestClient(self.app)
 
     def tearDown(self) -> None:
         self.app.dependency_overrides.clear()
+        self.db.close()
         reset_operational_store()
         _reset_operational_db()
 
@@ -365,7 +369,7 @@ class OperationalRoutesTest(unittest.TestCase):
             headers=auth_headers(),
         ).json()["data"]
 
-        repositories = build_operational_repositories()
+        repositories = build_operational_repositories(db=self.db)
         repositories.parties.create(
             organization_id=UUID(ORG_A),
             case_id=UUID(case_a["id"]),
@@ -455,7 +459,7 @@ class OperationalRoutesTest(unittest.TestCase):
             f"/api/v1/requests/{request_b['id']}/case",
             headers=auth_headers(),
         ).json()["data"]
-        repositories = build_operational_repositories()
+        repositories = build_operational_repositories(db=self.db)
 
         repositories.parties.create(
             organization_id=UUID(ORG_A),
@@ -685,10 +689,13 @@ class ScopedCaseResourceRoutesTest(unittest.TestCase):
             lambda: FakePermissionService()
         )
         self.app.dependency_overrides[get_audit_log_service] = lambda: self.audit
+        self.db = SessionLocal()
+        self.app.dependency_overrides[get_db] = lambda: self.db
         self.client = TestClient(self.app)
 
     def tearDown(self) -> None:
         self.app.dependency_overrides.clear()
+        self.db.close()
 
     def test_get_case_party_uses_case_id_party_id_and_organization_scope(self) -> None:
         from src.modules.case_parties.router import get_case_party_service

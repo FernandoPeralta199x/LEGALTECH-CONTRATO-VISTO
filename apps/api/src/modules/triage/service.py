@@ -97,9 +97,10 @@ class TriageService:
     def __init__(
         self,
         repositories: OperationalRepositories | None = None,
+        db=None,
         provider_registry: MockProviderRegistry | None = None,
     ) -> None:
-        self.repositories = repositories or build_operational_repositories()
+        self.repositories = repositories or build_operational_repositories(db=db)
         self.provider_registry = provider_registry or MockProviderRegistry()
 
     def create_plan(

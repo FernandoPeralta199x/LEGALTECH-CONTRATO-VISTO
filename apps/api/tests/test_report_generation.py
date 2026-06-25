@@ -9,6 +9,7 @@ from src.modules.contracts.operational import (
     build_operational_repositories,
     reset_operational_store,
 )
+from src.db.session import SessionLocal, get_db
 
 
 ORG_A = "11111111-1111-4111-8111-111111111111"
@@ -115,10 +116,13 @@ class ReportGenerationRoutesTest(unittest.TestCase):
         self.app.dependency_overrides[get_audit_log_service] = (
             lambda: FakeAuditLogService()
         )
+        self.db = SessionLocal()
+        self.app.dependency_overrides[get_db] = lambda: self.db
         self.client = TestClient(self.app)
 
     def tearDown(self) -> None:
         self.app.dependency_overrides.clear()
+        self.db.close()
         reset_operational_store()
         _reset_operational_db()
 
@@ -146,7 +150,7 @@ class ReportGenerationRoutesTest(unittest.TestCase):
         return request_data, case_response.json()["data"]
 
     def seed_case_operational_data(self, case_data: dict, *, suffix: str) -> None:
-        repos = build_operational_repositories()
+        repos = build_operational_repositories(db=self.db)
         repos.parties.create(
             organization_id=case_data["organization_id"],
             case_id=case_data["id"],
@@ -300,7 +304,7 @@ class ReportGenerationRoutesTest(unittest.TestCase):
         from src.modules.reports.service import ReportService
 
         self.app.dependency_overrides[get_report_service] = lambda: ReportService(
-            ai_provider=MockAIReportProvider(fail=True)
+            ai_provider=MockAIReportProvider(fail=True), db=self.db
         )
         _, case_data = self.create_case("Caso falha IA mock")
 

@@ -184,10 +184,26 @@ def build_operational_repositories(
     scoped_store = store or get_operational_store()
     if db is not None:
         from src.modules.contracts.case_bridge import OperationalCaseRepository
+        from src.modules.contracts.db_repositories import (
+            SqlDocumentRepository,
+            SqlPartyRepository,
+            SqlProviderResultRepository,
+            SqlReportRepository,
+            SqlTimelineRepository,
+            SqlTriageRepository,
+        )
         from src.modules.requests.repository import RequestRepository
 
-        requests = requests or RequestRepository(db)
-        cases = cases or OperationalCaseRepository(db, store=scoped_store)
+        return OperationalRepositories(
+            requests=requests or RequestRepository(db),
+            cases=cases or OperationalCaseRepository(db),
+            parties=SqlPartyRepository(db),
+            documents=SqlDocumentRepository(db),
+            timeline=SqlTimelineRepository(db),
+            triage=SqlTriageRepository(db),
+            provider_results=SqlProviderResultRepository(db),
+            reports=SqlReportRepository(db),
+        )
     return OperationalRepositories(
         requests=requests or MockRequestRepository(scoped_store),
         cases=cases or MockCaseRepository(scoped_store),

@@ -8,6 +8,9 @@ from src.models.document_chunk import DocumentChunk
 from src.models.document_embedding import DocumentEmbedding
 from src.models.external_query_cache import ExternalQueryCache
 from src.models.human_review import HumanReview
+from src.models.operational_document import OperationalDocument
+from src.models.operational_party import OperationalParty
+from src.models.operational_report import OperationalReport
 from src.models.organization import Organization
 from src.models.pricing_config import PricingConfig
 from src.models.provider_result import ProviderResult
@@ -29,6 +32,9 @@ __all__ = [
     "DocumentEmbedding",
     "ExternalQueryCache",
     "HumanReview",
+    "OperationalDocument",
+    "OperationalParty",
+    "OperationalReport",
     "Organization",
     "PricingConfig",
     "ProviderResult",

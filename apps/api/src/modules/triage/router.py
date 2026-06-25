@@ -3,7 +3,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 
+from sqlalchemy.orm import Session
+
 from src.core.rbac import require_permission
+from src.db.session import get_db
 from src.core.tenant import TenantContext
 from src.modules.common.responses import success_response
 from src.modules.triage.service import TriageService
@@ -12,8 +15,8 @@ from src.modules.triage.service import TriageService
 router = APIRouter(prefix="/api/v1/cases", tags=["triage"])
 
 
-def get_triage_service() -> TriageService:
-    return TriageService()
+def get_triage_service(db: Annotated[Session, Depends(get_db)]) -> TriageService:
+    return TriageService(db=db)
 
 
 def dump_model(model) -> dict:

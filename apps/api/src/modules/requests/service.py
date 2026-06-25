@@ -7,7 +7,6 @@ from src.modules.common.identifiers import parse_uuid
 from src.modules.contracts.operational import (
     OperationalRepositories,
     build_operational_repositories,
-    get_operational_store,
 )
 from src.modules.contracts.schemas import (
     CaseSchema,
@@ -21,7 +20,6 @@ from src.modules.contracts.schemas import (
     TimelineSeverity,
     TimelineSource,
 )
-from src.modules.contracts.case_bridge import OperationalCaseRepository
 from src.modules.requests.repository import RequestRepository
 from src.modules.triage.service import TriageService
 
@@ -36,12 +34,7 @@ class RequestService:
 
     @staticmethod
     def _build_default_repositories(db: Any = None) -> OperationalRepositories:
-        store = get_operational_store()
-        return build_operational_repositories(
-            store=store,
-            requests=RequestRepository(db) if db else None,
-            cases=OperationalCaseRepository(db, store=store) if db else None,
-        )
+        return build_operational_repositories(db=db)
 
     def create_request(
         self,

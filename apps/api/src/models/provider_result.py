@@ -43,6 +43,8 @@ class ProviderResult(
         JSONB, nullable=False, server_default=text("'[]'::jsonb")
     )
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     organization = relationship("Organization")
     case = relationship("Case")

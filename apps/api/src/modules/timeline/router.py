@@ -3,7 +3,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 
+from sqlalchemy.orm import Session
+
 from src.core.rbac import require_permission
+from src.db.session import get_db
 from src.core.tenant import TenantContext
 from src.modules.common.responses import success_response
 from src.modules.timeline.schemas import TimelineEventCreate
@@ -13,8 +16,8 @@ from src.modules.timeline.service import TimelineService
 router = APIRouter(prefix="/api/v1/cases", tags=["timeline"])
 
 
-def get_timeline_service() -> TimelineService:
-    return TimelineService()
+def get_timeline_service(db: Annotated[Session, Depends(get_db)]) -> TimelineService:
+    return TimelineService(db=db)
 
 
 def dump_model(model) -> dict:

@@ -70,3 +70,29 @@ Documento de retomada: o que foi feito, o que esta pendente e como continuar de 
 - `docs/COGNITO_OPCAO_A_RUNBOOK.md`
 - `docs/superpowers/plans/2026-06-24-persist-fluxo-operacional.md`
 - `docs/diagnostics/FIN-READY-DIAG.md`
+
+---
+
+## ATUALIZACAO — Caminho F (persistencia operacional plena) CONCLUIDO
+
+PERSIST/ADR-0002 fechado de fato: todos os sub-dados operacionais persistem no PostgreSQL.
+
+**O que foi feito (commits, em ordem):**
+- `49cd76b` Phase A: tabelas timeline_events/triage_modules/provider_results + migration 0013.
+- `432d3f1` colunas extras triage/provider (fidelidade total) + migration 0014.
+- `6b46e2a` tabelas operacionais parties/documents/reports + migration 0015 (opcao A: tabelas proprias, nao toca case_party/document/report do fluxo REST).
+- `b0ce531` 6 repos DB-backed (db_repositories.py) + wiring do builder com db + get_aggregate compoe do banco + triage/provider/timeline services com db.
+- `df2e567` testes: sessao de teste compartilhada (override get_db) + seeds no banco.
+- `fbe1a1c` remove _STORE morto do fluxo de producao.
+
+**Verificado (Postgres real montado no sandbox: pgserver+pgvector, Python 3.11):**
+- Suite 206/206 verde e deterministica.
+- Persistencia cross-session real (escreve+commit numa sessao, le em outra).
+- Masking LGPD do documento (123****00) e isolamento multi-tenant (org B nao ve dados de org A).
+
+**Restou (fora do escopo Caminho F):**
+- `_STORE`/Mock* permanecem apenas para unit tests (build_operational_repositories sem db).
+- CI backend: ainda informativo; agora pode virar bloqueante (suite verde).
+- RLS no Postgres: plano separado (doc arquitetura V2 secao 8).
+
+**Ambiente de verificacao (sandbox):** Postgres via `pgserver` (pip), Python 3.11 extraido do mirror Ubuntu, venv em /tmp; helpers /tmp/rt.sh, /tmp/reset_db.sh, /tmp/alembic.sh. Indice git em /tmp (virtiofs corrompe .git/index).

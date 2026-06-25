@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 
 from src.main import create_app
+from src.db.session import SessionLocal, get_db
 from src.modules.contracts.operational import reset_operational_store
 
 
@@ -110,10 +111,13 @@ class TriageProviderResultsRoutesTest(unittest.TestCase):
         self.app.dependency_overrides[get_audit_log_service] = (
             lambda: FakeAuditLogService()
         )
+        self.db = SessionLocal()
+        self.app.dependency_overrides[get_db] = lambda: self.db
         self.client = TestClient(self.app)
 
     def tearDown(self) -> None:
         self.app.dependency_overrides.clear()
+        self.db.close()
         reset_operational_store()
         _reset_operational_db()
 
@@ -299,7 +303,7 @@ class TriageProviderResultsRoutesTest(unittest.TestCase):
         from src.modules.triage.service import TriageService
 
         self.app.dependency_overrides[get_triage_service] = lambda: TriageService(
-            provider_registry=MockProviderRegistry(failure_module_keys={"serasa"})
+            provider_registry=MockProviderRegistry(failure_module_keys={"serasa"}), db=self.db
         )
         case_data = self.create_case(title="Contrato com falha mock")
 
