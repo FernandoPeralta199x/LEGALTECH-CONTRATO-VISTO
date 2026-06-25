@@ -31,12 +31,16 @@ def get_case_service(db: Annotated[Session, Depends(get_db)]) -> CaseService:
     return CaseService(db=db)
 
 
-def get_operational_case_list_service() -> OperationalCaseListService:
-    return OperationalCaseListService()
+def get_operational_case_list_service(
+    db: Annotated[Session, Depends(get_db)],
+) -> OperationalCaseListService:
+    return OperationalCaseListService(db=db)
 
 
-def get_operational_case_detail_service() -> OperationalCaseDetailService:
-    return OperationalCaseDetailService()
+def get_operational_case_detail_service(
+    db: Annotated[Session, Depends(get_db)],
+) -> OperationalCaseDetailService:
+    return OperationalCaseDetailService(db=db)
 
 
 def serialize_case(case) -> dict:

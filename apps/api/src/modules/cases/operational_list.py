@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from src.modules.common.identifiers import parse_uuid
@@ -13,12 +14,19 @@ from src.modules.contracts.schemas import (
     PaginatedResponse,
 )
 
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
 
 class OperationalCaseListService:
     """Builds list-ready case summaries from the operational repository layer."""
 
-    def __init__(self, repositories: OperationalRepositories | None = None) -> None:
-        self.repositories = repositories or build_operational_repositories()
+    def __init__(
+        self,
+        repositories: OperationalRepositories | None = None,
+        db: Session | None = None,
+    ) -> None:
+        self.repositories = repositories or build_operational_repositories(db=db)
 
     def list_cases(
         self,

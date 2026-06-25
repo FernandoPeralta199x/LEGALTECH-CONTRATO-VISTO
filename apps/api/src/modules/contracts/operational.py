@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 from src.modules.contracts.mock_repositories import (
     InMemoryOperationalStore,
@@ -173,7 +176,12 @@ def build_operational_repositories(
     store: InMemoryOperationalStore | None = None,
     requests: RequestRepositoryProtocol | None = None,
     cases: CaseRepositoryProtocol | None = None,
+    db: Session | None = None,
 ) -> OperationalRepositories:
+    # ADR-0002: `db` e o seam para repos DB-backed. Nesta fase de infra o default
+    # e preservado (mock), com ou sem `db`; a migracao incremental (Item 2+) passa
+    # a ramificar em `db` para o caminho DB-backed do agregado do case.
+    _ = db  # threaded para o seam; ainda nao utilizado (mock preservado)
     scoped_store = store or get_operational_store()
     return OperationalRepositories(
         requests=requests or MockRequestRepository(scoped_store),

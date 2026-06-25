@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from src.modules.common.exceptions import ResourceNotFoundError
@@ -9,12 +10,19 @@ from src.modules.contracts.operational import (
     build_operational_repositories,
 )
 
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
 
 class OperationalCaseDetailService:
     """Reads the full operational case aggregate through repository contracts."""
 
-    def __init__(self, repositories: OperationalRepositories | None = None) -> None:
-        self.repositories = repositories or build_operational_repositories()
+    def __init__(
+        self,
+        repositories: OperationalRepositories | None = None,
+        db: Session | None = None,
+    ) -> None:
+        self.repositories = repositories or build_operational_repositories(db=db)
 
     def get_aggregate(
         self,
