@@ -37,8 +37,11 @@ class CasePartyRead(BaseModel):
     party_type: str
     name: str
     document: str | None = None
+    document_masked: str | None = None
     email: str | None = None
+    email_masked: str | None = None
     phone: str | None = None
+    phone_masked: str | None = None
     notes: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime

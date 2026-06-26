@@ -22,3 +22,25 @@ def mask_email(email: str | None) -> str:
         return REDACTED
     masked_local = "*" if len(local) <= 1 else local[0] + "*" * (len(local) - 1)
     return f"{masked_local}@{domain}"
+
+
+def mask_phone(phone: str | None) -> str:
+    """Mascara telefone mantendo DDD + 2 ultimos digitos: `(11) ****-**99`."""
+    if not phone:
+        return REDACTED
+    digits = "".join(c for c in phone if c.isdigit())
+    if len(digits) < 4:
+        return REDACTED
+    return f"({digits[:2]}) ****-**{digits[-2:]}"
+
+
+def mask_document(document: str | None) -> str | None:
+    """Mascara CPF/CNPJ mantendo apenas os 2 ultimos digitos."""
+    if not document:
+        return None
+    digits = "".join(c for c in document if c.isdigit())
+    if len(digits) == 11:
+        return f"***.***.***-{digits[-2:]}"
+    if len(digits) == 14:
+        return f"**.***.***/****-{digits[-2:]}"
+    return "Documento protegido"

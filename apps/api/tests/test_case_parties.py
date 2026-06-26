@@ -199,6 +199,23 @@ class CasePartiesRoutesTest(unittest.TestCase):
         self.assertEqual(ORG_ID, kwargs["organization_id"])
         self.assertEqual(case_id, kwargs["case_id"])
 
+    def test_list_case_parties_masks_pii(self) -> None:
+        # LGPD-01: cards de parte mascaram doc/email/telefone e nao vazam via metadata.
+        response = self.client.get(
+            f"/api/v1/cases/{uuid4()}/parties",
+            headers=auth_headers(),
+        )
+        self.assertEqual(200, response.status_code)
+        item = response.json()["data"][0]
+        self.assertEqual("***.***.***-00", item["document_masked"])
+        self.assertIsNone(item["document"])
+        self.assertIsNone(item["email"])
+        self.assertIsNone(item["phone"])
+        self.assertIn("@example.test", item["email_masked"])
+        self.assertTrue(item["phone_masked"].startswith("("))
+        self.assertNotIn("email", item["metadata"])
+        self.assertNotIn("phone", item["metadata"])
+
     def test_list_case_parties_requires_bearer_jwt(self) -> None:
         response = self.client.get(f"/api/v1/cases/{uuid4()}/parties")
 

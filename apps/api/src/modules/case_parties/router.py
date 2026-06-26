@@ -14,6 +14,7 @@ from src.modules.case_parties.schemas import (
     CasePartyRead,
     CasePartyUpdate,
 )
+from src.modules.common.pii import mask_document, mask_email, mask_phone
 from src.modules.case_parties.service import CasePartyService
 from src.modules.common.responses import success_response
 from src.modules.contracts.schemas import (
@@ -41,16 +42,27 @@ def request_ip(request: Request) -> str | None:
 
 def serialize_case_party(case_party) -> dict:
     metadata = dict(case_party.metadata_json or {})
+    raw_email = metadata.get("email") if isinstance(metadata.get("email"), str) else None
+    raw_phone = metadata.get("phone") if isinstance(metadata.get("phone"), str) else None
+    # LGPD-01: nao expor PII crua (nem via metadata) em cards/listas de parte.
+    safe_metadata = {
+        key: value
+        for key, value in metadata.items()
+        if key not in {"email", "phone", "document", "document_number", "cpf", "cnpj", "rg"}
+    }
     return CasePartyRead(
         id=case_party.id,
         case_id=case_party.case_id,
         party_type=case_party.party_type,
         name=case_party.name,
-        document=case_party.document,
-        email=metadata.get("email") if isinstance(metadata.get("email"), str) else None,
-        phone=metadata.get("phone") if isinstance(metadata.get("phone"), str) else None,
+        document=None,
+        document_masked=mask_document(case_party.document),
+        email=None,
+        email_masked=mask_email(raw_email) if raw_email else None,
+        phone=None,
+        phone_masked=mask_phone(raw_phone) if raw_phone else None,
         notes=metadata.get("notes") if isinstance(metadata.get("notes"), str) else None,
-        metadata=metadata,
+        metadata=safe_metadata,
         created_at=case_party.created_at,
         updated_at=case_party.updated_at,
     ).model_dump(mode="json")
