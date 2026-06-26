@@ -16,6 +16,7 @@ from src.modules.roles.permissions import SELF_REGISTRATION_ROLES
 from src.modules.audit import actions as audit_actions
 from src.modules.audit.service import AuditLogService
 from src.core.constants import SYSTEM_ORGANIZATION_ID
+from src.core.rate_limit import AccountLockout, get_account_lockout
 
 if TYPE_CHECKING:
     from src.models.user import User
@@ -57,6 +58,10 @@ class LocalAuthDisabledError(AuthServiceError):
     pass
 
 
+class AccountLockedError(AuthServiceError):
+    pass
+
+
 class AuthService:
     def __init__(
         self,
@@ -64,9 +69,11 @@ class AuthService:
         repository: UserRepository,
         settings: Settings | None = None,
         audit: AuditLogService | None = None,
+        lockout: AccountLockout | None = None,
     ) -> None:
         self._repository = repository
         self._audit = audit
+        self._lockout = lockout
         self._settings = settings or get_settings()
         self._email_sender = create_email_sender(
             self._settings.email_backend,
@@ -173,6 +180,10 @@ class AuthService:
         except Exception:
             # Auditoria nunca quebra o fluxo de auth (ex.: org-sistema nao semeada).
             pass
+
+    def _register_failure(self, key: str) -> None:
+        if self._lockout is not None:
+            self._lockout.register_failure(key)
 
     def register(
         self,
@@ -311,6 +322,19 @@ class AuthService:
         user_agent: str | None = None,
     ) -> dict:
         self._ensure_local_auth_enabled()
+        lockout_key = (email or "").strip().lower()
+        if self._lockout is not None and self._lockout.is_locked(lockout_key):
+            self._record_auth_event(
+                audit_actions.AUTH_LOGIN_FAILURE,
+                user=None,
+                email=email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                reason="account_locked",
+            )
+            raise AccountLockedError(
+                "Muitas tentativas de login. Tente novamente mais tarde."
+            )
         user = self._repository.get_by_email(email)
         if not user:
             self._record_auth_event(
@@ -321,6 +345,7 @@ class AuthService:
                 user_agent=user_agent,
                 reason="unknown_email",
             )
+            self._register_failure(lockout_key)
             raise InvalidCredentialsError("E-mail ou senha inválidos.")
 
         if user.status != "active" or not user.email_verified_at:
@@ -332,6 +357,7 @@ class AuthService:
                 user_agent=user_agent,
                 reason="not_verified",
             )
+            self._register_failure(lockout_key)
             raise EmailNotVerifiedError(
                 "E-mail ainda não confirmado. Verifique sua caixa de entrada."
             )
@@ -345,8 +371,11 @@ class AuthService:
                 user_agent=user_agent,
                 reason="bad_password",
             )
+            self._register_failure(lockout_key)
             raise InvalidCredentialsError("E-mail ou senha inválidos.")
 
+        if self._lockout is not None:
+            self._lockout.reset(lockout_key)
         access_token = self._issue_dev_jwt(user)
         self._record_auth_event(
             audit_actions.AUTH_LOGIN_SUCCESS,
@@ -376,4 +405,5 @@ def get_auth_service(db) -> AuthService:
     return AuthService(
         repository=UserRepository(db),
         audit=AuditLogService(db),
+        lockout=get_account_lockout(),
     )

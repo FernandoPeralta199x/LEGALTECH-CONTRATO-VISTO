@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     enable_docs: bool = Field(default=True, alias="ENABLE_DOCS")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
+    trusted_proxy_enabled: bool = Field(default=False, alias="TRUSTED_PROXY_ENABLED")
+    auth_lockout_max_failures: int = Field(default=5, alias="AUTH_LOCKOUT_MAX_FAILURES")
+    auth_lockout_window_seconds: int = Field(
+        default=900, alias="AUTH_LOCKOUT_WINDOW_SECONDS"
+    )
     cors_allowed_origins: str = Field(
         default=(
             "http://localhost:3000,"

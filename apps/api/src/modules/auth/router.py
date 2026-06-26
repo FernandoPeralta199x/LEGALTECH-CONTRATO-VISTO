@@ -11,6 +11,7 @@ from src.modules.auth.schemas import (
     VerifyEmailRequest,
 )
 from src.modules.auth.service import (
+    AccountLockedError,
     AuthServiceError,
     EmailAlreadyRegisteredError,
     EmailNotVerifiedError,
@@ -136,6 +137,11 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not Found",
+        ) from exc
+    except AccountLockedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
         ) from exc
     except (InvalidCredentialsError, EmailNotVerifiedError) as exc:
         raise HTTPException(
