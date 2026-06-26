@@ -3,6 +3,7 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator
 
 from src.modules.roles.permissions import SELF_REGISTRATION_ROLES
+from src.core.password_policy import validate_password_policy
 
 
 EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
@@ -20,7 +21,7 @@ def _validate_email(value: str) -> str:
 class RegisterRequest(BaseModel):
     email: str = Field(..., min_length=3, max_length=255)
     name: str = Field(..., min_length=2, max_length=255)
-    password: str = Field(..., min_length=8, max_length=16)
+    password: str = Field(...)
     role: str = Field(default="client")
 
     @field_validator("email")
@@ -38,14 +39,7 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password_strength(cls, value: str) -> str:
-        if len(value) < 8 or len(value) > 16:
-            raise ValueError("A senha deve ter entre 8 e 16 caracteres.")
-        if not any(character.isupper() for character in value):
-            raise ValueError("A senha deve conter pelo menos uma letra maiúscula.")
-        if not any(character.islower() for character in value):
-            raise ValueError("A senha deve conter pelo menos uma letra minúscula.")
-        if not any(character for character in value if character in "!@#$%^&*()_+-=[]{}|;:,.<>?"):
-            raise ValueError("A senha deve conter pelo menos um caractere especial.")
+        validate_password_policy(value)
         return value
 
 
