@@ -233,7 +233,7 @@ test("validatePasswordChange requires a strong new password and matching confirm
   const result = validatePasswordChange({
     confirmPassword: "Senha-fraca-2",
     currentPassword: "",
-    newPassword: "senha"
+    newPassword: "abcdefghijkl"
   });
 
   assert.equal(result.valid, false);
@@ -242,7 +242,8 @@ test("validatePasswordChange requires a strong new password and matching confirm
   assert.equal(result.errors.confirmPassword, "A confirmação deve ser igual à nova senha.");
   assert.deepEqual(result.requirements, {
     hasLowercase: true,
-    hasMinLength: false,
+    hasMaxLength: true,
+    hasMinLength: true,
     hasSpecial: false,
     hasUppercase: false
   });
@@ -250,15 +251,16 @@ test("validatePasswordChange requires a strong new password and matching confirm
 
 test("validatePasswordChange accepts valid local password change input", () => {
   const result = validatePasswordChange({
-    confirmPassword: "Senha@123",
+    confirmPassword: "Senha-Forte@12",
     currentPassword: "Atual@123",
-    newPassword: "Senha@123"
+    newPassword: "Senha-Forte@12"
   });
 
   assert.equal(result.valid, true);
   assert.deepEqual(result.errors, {});
   assert.deepEqual(result.requirements, {
     hasLowercase: true,
+    hasMaxLength: true,
     hasMinLength: true,
     hasSpecial: true,
     hasUppercase: true

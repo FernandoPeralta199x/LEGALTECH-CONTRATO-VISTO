@@ -89,7 +89,7 @@ const notificationItems: Array<{
 ];
 
 const requirementLabels = [
-  ["hasMinLength", "Mínimo de 8 caracteres"],
+  ["hasMinLength", "Mínimo de 12 caracteres"],
   ["hasLowercase", "Pelo menos 1 letra minúscula"],
   ["hasUppercase", "Pelo menos 1 letra maiúscula"],
   ["hasSpecial", "Pelo menos 1 caractere especial"]
