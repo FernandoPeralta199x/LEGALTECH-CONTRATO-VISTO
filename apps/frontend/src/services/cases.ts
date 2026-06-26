@@ -127,7 +127,9 @@ type BackendAggregateParty = {
   person_type: string;
   role: string;
   email: string | null;
+  email_masked: string | null;
   phone: string | null;
+  phone_masked: string | null;
   status: string;
   risk_level: string;
   provider_status_summary: string | null;
@@ -629,8 +631,8 @@ function mapAggregateParty(party: BackendAggregateParty): Party {
     personType: party.person_type as Party["personType"],
     type: party.role,
     role: party.role,
-    email: party.email ?? "",
-    phone: party.phone ?? "",
+    email: party.email_masked ?? "",
+    phone: party.phone_masked ?? "",
     notes: typeof party.metadata.notes === "string" ? party.metadata.notes : "",
     status: party.status as Party["status"],
     riskLevel: party.risk_level as Party["riskLevel"],

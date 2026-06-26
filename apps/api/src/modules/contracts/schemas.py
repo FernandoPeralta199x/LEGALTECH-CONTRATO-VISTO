@@ -7,6 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from src.modules.common.pii import mask_email, mask_phone
+
 
 class RequestStatus(StrEnum):
     DRAFT = "draft"
@@ -261,8 +263,10 @@ class PartySchema(BaseModel):
     document_type: str = "unknown"
     person_type: str = "unknown"
     role: str
-    email: str | None = None
-    phone: str | None = None
+    email: str | None = Field(default=None, exclude=True)
+    email_masked: str | None = None
+    phone: str | None = Field(default=None, exclude=True)
+    phone_masked: str | None = None
     status: ModuleStatus = ModuleStatus.NOT_STARTED
     risk_level: RiskLevel = RiskLevel.UNKNOWN
     provider_status_summary: str | None = None
@@ -276,6 +280,10 @@ class PartySchema(BaseModel):
         masked_digits = _digits(self.document_masked)
         if raw_digits and (not masked_digits or masked_digits == raw_digits):
             self.document_masked = mask_document(self.document)
+        if self.email and not self.email_masked:
+            self.email_masked = mask_email(self.email)
+        if self.phone and not self.phone_masked:
+            self.phone_masked = mask_phone(self.phone)
         return self
 
 
