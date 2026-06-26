@@ -109,8 +109,15 @@ class LocalDocumentStorageTest(unittest.TestCase):
             self.assertFalse(any(path.is_file() for path in Path(temp_dir).rglob("*")))
 
     def test_local_upload_folder_is_ignored_by_git(self) -> None:
-        repository_root = Path(__file__).resolve().parents[3]
-        gitignore = (repository_root / ".gitignore").read_text(encoding="utf-8")
+        gitignore_path = None
+        for _parent in Path(__file__).resolve().parents:
+            _candidate = _parent / ".gitignore"
+            if _candidate.is_file():
+                gitignore_path = _candidate
+                break
+        if gitignore_path is None:
+            self.skipTest(".gitignore nao encontrado (rodando fora do repo)")
+        gitignore = gitignore_path.read_text(encoding="utf-8")
 
         self.assertIn(
             "apps/api/storage/local_uploads/",

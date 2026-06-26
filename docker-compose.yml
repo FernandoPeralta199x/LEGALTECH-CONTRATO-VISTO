@@ -41,6 +41,7 @@ services:
       - ./apps/api/alembic:/app/alembic
       - ./apps/api/alembic.ini:/app/alembic.ini
       - ./apps/api/storage:/app/storage
+      - ./apps/api/tests:/app/tests
     depends_on:
       postgres:
         condition: service_healthy

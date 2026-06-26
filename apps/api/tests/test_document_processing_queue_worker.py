@@ -13,9 +13,11 @@ from src.main import create_app
 from src.modules.common.exceptions import ResourceNotFoundError
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+for _candidate in Path(__file__).resolve().parents:
+    if (_candidate / ".git").exists() or (_candidate / "apps").is_dir():
+        if str(_candidate) not in sys.path:
+            sys.path.insert(0, str(_candidate))
+        break
 
 ORG_ID = "11111111-1111-4111-8111-111111111111"
 USER_ID = "22222222-2222-4222-8222-222222222222"
@@ -421,6 +423,18 @@ class AgentExecutionLayerTest(unittest.TestCase):
         self.assertTrue(AgentExecutionService)
 
 
+try:
+    import workers.document_processing.worker  # noqa: F401
+
+    _WORKERS_AVAILABLE = True
+except ImportError:
+    _WORKERS_AVAILABLE = False
+
+
+@unittest.skipUnless(
+    _WORKERS_AVAILABLE,
+    "pacote workers/ indisponivel (rodando fora do repo, ex.: container apps/api)",
+)
 class DocumentProcessingWorkerTest(unittest.TestCase):
     def make_message(
         self,
