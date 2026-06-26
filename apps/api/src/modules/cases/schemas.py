@@ -2,7 +2,9 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from src.modules.contracts.schemas import CaseStatus
 
 
 class CaseCreate(BaseModel):
@@ -22,6 +24,17 @@ class CaseUpdate(BaseModel):
     status: str | None = Field(default=None, min_length=1, max_length=30)
     priority: str | None = Field(default=None, min_length=1, max_length=20)
     metadata: dict[str, Any] | None = None
+
+    @field_validator("status")
+    @classmethod
+    def _validate_status(cls, value: str | None) -> str | None:
+        # M-11: status de caso deve ser um CaseStatus valido (nao um RequestStatus
+        # como "submitted"). Rejeita cedo com 422 em vez de 500 downstream.
+        if value is None:
+            return value
+        if value not in {item.value for item in CaseStatus}:
+            raise ValueError(f"Status invalido para caso: {value!r}.")
+        return value
 
 
 class CaseRead(BaseModel):

@@ -253,7 +253,7 @@ class AuthRbacAuditRoutesTest(unittest.TestCase):
         response = self.client.patch(
             f"/api/v1/cases/{case_id}",
             headers=auth_headers(),
-            json={"status": "submitted"},
+            json={"status": "completed"},
         )
 
         self.assertEqual(200, response.status_code)

@@ -468,12 +468,29 @@ class CasesRoutesTest(unittest.TestCase):
         self.assertEqual(False, response.json()["success"])
         self.assertEqual("NOT_FOUND", response.json()["error"]["code"])
 
+    def test_update_case_rejects_request_status_with_422(self) -> None:
+        # M-11: "submitted" e status de request, invalido para caso -> 422 (nao 500).
+        response = self.client.patch(
+            f"/api/v1/cases/{uuid4()}",
+            headers=auth_headers(),
+            json={"status": "submitted"},
+        )
+        self.assertEqual(422, response.status_code)
+
+    def test_update_case_accepts_valid_case_status(self) -> None:
+        response = self.client.patch(
+            f"/api/v1/cases/{uuid4()}",
+            headers=auth_headers(),
+            json={"status": "completed"},
+        )
+        self.assertEqual(200, response.status_code)
+
     def test_update_case_uses_internal_tenant_context(self) -> None:
         case_id = uuid4()
         response = self.client.patch(
             f"/api/v1/cases/{case_id}",
             headers=auth_headers(),
-            json={"status": "submitted"},
+            json={"status": "completed"},
         )
 
         self.assertEqual(200, response.status_code)
