@@ -16,6 +16,7 @@ from src.modules.roles.permissions import SELF_REGISTRATION_ROLES
 from src.modules.audit import actions as audit_actions
 from src.modules.audit.service import AuditLogService
 from src.core.constants import SYSTEM_ORGANIZATION_ID
+from src.core.password import PasswordHasher, get_password_hasher
 from src.core.rate_limit import AccountLockout, get_account_lockout
 
 if TYPE_CHECKING:
@@ -70,10 +71,12 @@ class AuthService:
         settings: Settings | None = None,
         audit: AuditLogService | None = None,
         lockout: AccountLockout | None = None,
+        hasher: PasswordHasher | None = None,
     ) -> None:
         self._repository = repository
         self._audit = audit
         self._lockout = lockout
+        self._hasher = hasher or get_password_hasher()
         self._settings = settings or get_settings()
         self._email_sender = create_email_sender(
             self._settings.email_backend,
@@ -82,28 +85,10 @@ class AuthService:
         )
 
     def _hash_password(self, password: str) -> str:
-        """Hash password using PBKDF2. NOT for production."""
-        salt = secrets.token_hex(16)
-        digest = hashlib.pbkdf2_hmac(
-            "sha256",
-            password.encode("utf-8"),
-            salt.encode("utf-8"),
-            100_000,
-        ).hex()
-        return f"pbkdf2_sha256${salt}${digest}"
+        return self._hasher.hash(password)
 
     def _verify_password(self, password: str, password_hash: str) -> bool:
-        if not password_hash or not password_hash.startswith("pbkdf2_sha256$"):
-            return False
-
-        _, salt, stored_digest = password_hash.split("$", 2)
-        computed = hashlib.pbkdf2_hmac(
-            "sha256",
-            password.encode("utf-8"),
-            salt.encode("utf-8"),
-            100_000,
-        ).hex()
-        return hmac.compare_digest(computed, stored_digest)
+        return self._hasher.verify(password, password_hash or "")
 
     def _generate_verification_token(self) -> str:
         return secrets.token_urlsafe(32)
@@ -373,6 +358,15 @@ class AuthService:
             )
             self._register_failure(lockout_key)
             raise InvalidCredentialsError("E-mail ou senha inválidos.")
+
+        if self._hasher.needs_rehash(user.password_hash or ""):
+            try:
+                self._repository.update_password_hash(
+                    user, self._hasher.hash(password)
+                )
+            except Exception:
+                # Re-hash best-effort (AUTH-05.1); nunca quebra o login.
+                pass
 
         if self._lockout is not None:
             self._lockout.reset(lockout_key)

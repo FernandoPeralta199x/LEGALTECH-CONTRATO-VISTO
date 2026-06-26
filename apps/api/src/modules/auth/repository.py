@@ -83,6 +83,11 @@ class UserRepository:
         self._db.flush()
         return user
 
+    def update_password_hash(self, user: User, password_hash: str) -> User:
+        user.password_hash = password_hash
+        self._db.flush()
+        return user
+
     def get_by_id(self, user_id: str) -> User:
         user = (
             self._db.query(User)
