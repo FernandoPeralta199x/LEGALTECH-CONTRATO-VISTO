@@ -14,11 +14,16 @@ Nenhum recurso AWS real e criado por este repositorio neste momento.
 - Banco local: PostgreSQL via Docker Compose com `pgvector`.
 - Auth local: JWT dev apenas para `APP_ENV=local`.
 - Auth futura: validacao Cognito/JWKS preparada no backend.
+- Hash de senha: Argon2id (padrao), com verificacao e migracao de hashes PBKDF2 legados e re-hash no login.
+- Politica de senha: NIST (minimo 12, maximo 128 caracteres, denylist offline de senhas comuns).
+- Protecao de login: rate limiting e lockout temporario por conta; `X-Forwarded-For` so e considerado atras de proxy confiavel.
 - Storage: local/mock e adaptador S3 preparado.
 - Filas: local/mock e adaptador SQS preparado.
 - Workers: processamento de documentos + triagem com adapters mock.
 - Adapters: Escavador, Serasa, CNJ, OCR, AI (todos com mock + interface para real).
-- Auditoria: `audit_log` avancado com sanitizacao LGPD.
+- Auditoria: `audit_log` avancado com sanitizacao LGPD e mascaramento de PII (email/telefone/CPF) em cards e listas.
+- Financeiro: preco do pedido congelado (snapshot) e auditado na criacao.
+- Imagem do backend: production-grade (usuario non-root, sem `--reload`, `HEALTHCHECK`, uvicorn `--workers`); o dev mantem `--reload` via override do Compose.
 - Infra: documentacao e checklists AWS, sem deploy real.
 
 ## Arquitetura
@@ -212,6 +217,9 @@ Relatorio de hardening local:
 - Logs nao devem expor CPF/CNPJ completo, tokens, senhas, chaves ou contratos
   integrais.
 - Secrets reais devem ficar fora do repositorio.
+- Senhas sao armazenadas com Argon2id; hashes PBKDF2 legados sao verificados e migrados no login.
+- Tentativas de login tem rate limiting e lockout temporario por conta.
+- Decisoes de seguranca recentes documentadas em `docs/adr/ADR-0003-endurecimento-auth-local.md`.
 
 ## Workers
 
