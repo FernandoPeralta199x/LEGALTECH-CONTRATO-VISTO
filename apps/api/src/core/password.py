@@ -6,6 +6,13 @@ import hmac
 import secrets
 from typing import Protocol
 
+from argon2 import PasswordHasher as _Argon2PasswordHasher
+from argon2.exceptions import (
+    InvalidHashError,
+    VerificationError,
+    VerifyMismatchError,
+)
+
 PBKDF2_ALGORITHM = "pbkdf2_sha256"
 PBKDF2_ITERATIONS = 600_000  # OWASP 2023 para PBKDF2-HMAC-SHA256
 _LEGACY_ITERATIONS = 100_000  # hashes antigos (formato sem campo de iteracoes)
@@ -70,11 +77,40 @@ class Pbkdf2PasswordHasher:
         return None
 
 
+class Argon2PasswordHasher:
+    """Argon2id (OWASP first-choice). Verifica tambem hashes legados PBKDF2
+    e os marca para re-hash, migrando no proximo login (ADR-0003)."""
+
+    def __init__(self) -> None:
+        self._argon2 = _Argon2PasswordHasher()
+        self._legacy = Pbkdf2PasswordHasher()
+
+    def hash(self, password: str) -> str:
+        return self._argon2.hash(password)
+
+    def verify(self, password: str, encoded: str) -> bool:
+        if not encoded:
+            return False
+        if encoded.startswith("$argon2"):
+            try:
+                return self._argon2.verify(encoded, password)
+            except (VerifyMismatchError, InvalidHashError, VerificationError):
+                return False
+        return self._legacy.verify(password, encoded)
+
+    def needs_rehash(self, encoded: str) -> bool:
+        if not encoded:
+            return True
+        if encoded.startswith("$argon2"):
+            return self._argon2.check_needs_rehash(encoded)
+        return True
+
+
 _default_hasher: "PasswordHasher | None" = None
 
 
 def get_password_hasher() -> "PasswordHasher":
     global _default_hasher
     if _default_hasher is None:
-        _default_hasher = Pbkdf2PasswordHasher()
+        _default_hasher = Argon2PasswordHasher()
     return _default_hasher

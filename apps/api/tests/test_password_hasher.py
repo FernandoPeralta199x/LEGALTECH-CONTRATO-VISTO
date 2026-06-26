@@ -85,6 +85,24 @@ class _Repo:
         return user
 
 
+class Argon2PasswordHasherTest(unittest.TestCase):
+    def setUp(self):
+        from src.core.password import Argon2PasswordHasher
+        self.h = Argon2PasswordHasher()
+
+    def test_hash_is_argon2id(self):
+        enc = self.h.hash(PW)
+        self.assertTrue(enc.startswith("$argon2id$"))
+        self.assertTrue(self.h.verify(PW, enc))
+        self.assertFalse(self.h.verify("WrongPass9!", enc))
+        self.assertFalse(self.h.needs_rehash(enc))
+
+    def test_verifies_and_migrates_legacy_pbkdf2(self):
+        legacy = Pbkdf2PasswordHasher().hash(PW)
+        self.assertTrue(self.h.verify(PW, legacy))
+        self.assertTrue(self.h.needs_rehash(legacy))
+
+
 class LoginRehashTest(unittest.TestCase):
     def _svc(self, repo):
         return AuthService(repository=repo, settings=_settings(), audit=_FakeAudit())
@@ -95,7 +113,7 @@ class LoginRehashTest(unittest.TestCase):
         repo = _Repo(user)
         self._svc(repo).login(email=user.email, password=PW)
         self.assertIsNotNone(repo.updated_hash)
-        self.assertTrue(repo.updated_hash.startswith("pbkdf2_sha256$600000$"))
+        self.assertTrue(repo.updated_hash.startswith("$argon2"))
         self.assertTrue(get_password_hasher().verify(PW, repo.updated_hash))
 
     def test_login_with_current_hash_does_not_rehash(self):
