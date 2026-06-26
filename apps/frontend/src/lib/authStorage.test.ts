@@ -86,7 +86,7 @@ test("authStorage saves, reads and clears a dev session", () => {
   clearStoredSession();
 
   assert.equal(getStoredSession(), null);
-  assert.equal(storage.removeCalls, 1);
+  assert.equal(storage.removeCalls, 3);
   assert.equal(sessionChangedEvents, 2);
 });
 

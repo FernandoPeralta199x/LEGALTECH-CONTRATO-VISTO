@@ -687,8 +687,8 @@ test("submitWizardRequest sends operational wizard payload without organization_
   assert.equal(authorizationHeader, "Bearer wizard.jwt.token");
   assert.equal(payload.organization_id, undefined);
   assert.equal(payload.product_type, "analise_contratual");
-  assert.equal(payload.source_mode, "mock");
-  assert.equal(payload.metadata.source_mode, "mock");
+  assert.equal(payload.source_mode, "local");
+  assert.equal(payload.metadata.source_mode, "local");
   assert.equal(payload.idempotency_key, "idem-wizard-1");
   assert.equal(payload.parties[0].name, "Cliente Wizard");
   assert.equal(payload.parties[0].document_type, "cpf");

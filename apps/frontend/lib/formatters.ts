@@ -64,10 +64,16 @@ export function formatStatusLabel(
   return labels[value] ?? value;
 }
 
+function formatSizeUnit(value: number, unit: string): string {
+  const rounded = Math.round(value * 10) / 10;
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${text} ${unit}`;
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024) return formatSizeUnit(bytes / 1024, "KB");
+  return formatSizeUnit(bytes / (1024 * 1024), "MB");
 }
 
 const caseTypeLabel: Record<string, string> = {
