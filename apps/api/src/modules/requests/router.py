@@ -9,13 +9,14 @@ from src.db.session import get_db
 from src.modules.common.responses import success_response
 from src.modules.contracts.schemas import CreateRequestPayloadSchema
 from src.modules.requests.service import RequestService
+from src.modules.audit.service import AuditLogService
 
 
 router = APIRouter(prefix="/api/v1/requests", tags=["requests"])
 
 
 def get_request_service(db = Depends(get_db)) -> RequestService:
-    return RequestService(db=db)
+    return RequestService(db=db, audit=AuditLogService(db))
 
 
 def dump_model(model) -> dict:

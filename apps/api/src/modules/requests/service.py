@@ -21,6 +21,8 @@ from src.modules.contracts.schemas import (
     TimelineSource,
 )
 from src.modules.requests.repository import RequestRepository
+from src.modules.audit import actions as audit_actions
+from src.modules.audit.service import AuditLogService
 from src.modules.triage.service import TriageService
 
 
@@ -29,8 +31,10 @@ class RequestService:
         self,
         repositories: OperationalRepositories | None = None,
         db = None,
+        audit: AuditLogService | None = None,
     ) -> None:
         self.repositories = repositories or self._build_default_repositories(db)
+        self._audit = audit
 
     @staticmethod
     def _build_default_repositories(db: Any = None) -> OperationalRepositories:
@@ -93,7 +97,22 @@ class RequestService:
             organization_id=organization_uuid,
             request_id=request.id,
         )
-        return refreshed or request
+        final = refreshed or request
+        if self._audit is not None:
+            self._audit.record_event(
+                organization_id=organization_uuid,
+                user_id=user_uuid,
+                action=audit_actions.REQUEST_CREATED,
+                entity_type="request",
+                entity_id=final.id,
+                metadata={
+                    "product_type": str(payload.product_type),
+                    "total_price_cents": final.total_price_cents,
+                    "price_snapshot": final.price_snapshot,
+                },
+            )
+            self._audit.commit_pending()
+        return final
 
     def build_creation_response(
         self,

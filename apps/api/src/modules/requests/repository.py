@@ -214,6 +214,8 @@ class RequestRepository:
             code=request.code,
             organization_id=request.organization_id,
             created_by=request.created_by,
+            total_price_cents=request.total_price_cents,
+            price_snapshot=request.price_snapshot,
             product_type=request.product_type,
             product_label=request.product_label,
             title=request.title,

@@ -147,6 +147,8 @@ class LegalRequestSchema(BaseModel):
     status: RequestStatus
     source_mode: SourceMode
     idempotency_key: str | None = None
+    total_price_cents: int | None = None
+    price_snapshot: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
 

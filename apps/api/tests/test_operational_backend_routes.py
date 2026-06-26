@@ -227,6 +227,24 @@ class OperationalRoutesTest(unittest.TestCase):
         self.assertIn("total_price_cents", row.price_snapshot)
         self.assertEqual(row.total_price_cents, row.price_snapshot["total_price_cents"])
 
+    def test_request_create_emits_audit_with_price(self) -> None:
+        # C-04/FIN-02: criacao de pedido gera audit_log com o preco congelado.
+        from uuid import UUID
+
+        from src.models.audit_log import AuditLog
+
+        created = self.create_request("Pedido Auditado")
+        events = (
+            self.db.query(AuditLog)
+            .filter(AuditLog.action == "requests.create")
+            .filter(AuditLog.entity_id == UUID(created["id"]))
+            .all()
+        )
+        self.assertEqual(1, len(events))
+        meta = events[0].metadata_json
+        self.assertIsNotNone(meta.get("total_price_cents"))
+        self.assertIn("total_price_cents", meta.get("price_snapshot", {}))
+
     def test_wizard_submit_creates_operational_case_resources_and_triage_plan(self) -> None:
         payload = {
             "product_type": "analise_contratual",
