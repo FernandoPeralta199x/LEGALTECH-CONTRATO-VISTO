@@ -44,3 +44,8 @@ RBAC_DENIED = "rbac.denied"
 ROLES_PERMISSIONS_SEED = "roles_permissions.seed"
 
 PRICING_CHANGED = "pricing.changed"
+
+AUTH_USER_REGISTERED = "auth.user.registered"
+AUTH_EMAIL_VERIFIED = "auth.email.verified"
+AUTH_LOGIN_SUCCESS = "auth.login.success"
+AUTH_LOGIN_FAILURE = "auth.login.failure"

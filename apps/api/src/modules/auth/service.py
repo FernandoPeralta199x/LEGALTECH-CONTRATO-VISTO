@@ -13,6 +13,9 @@ from src.modules.admin.dev_jwt import create_dev_jwt
 from src.modules.auth.repository import UserRepository
 from src.modules.common.exceptions import ResourceNotFoundError
 from src.modules.roles.permissions import SELF_REGISTRATION_ROLES
+from src.modules.audit import actions as audit_actions
+from src.modules.audit.service import AuditLogService
+from src.core.constants import SYSTEM_ORGANIZATION_ID
 
 if TYPE_CHECKING:
     from src.models.user import User
@@ -60,8 +63,10 @@ class AuthService:
         *,
         repository: UserRepository,
         settings: Settings | None = None,
+        audit: AuditLogService | None = None,
     ) -> None:
         self._repository = repository
+        self._audit = audit
         self._settings = settings or get_settings()
         self._email_sender = create_email_sender(
             self._settings.email_backend,
@@ -122,6 +127,53 @@ class AuthService:
         ):
             raise LocalAuthDisabledError("Not Found")
 
+    @staticmethod
+    def _mask_email(email: str | None) -> str:
+        if not email or "@" not in email:
+            return "[no-email]"
+        local, _, domain = email.partition("@")
+        masked_local = (local[:2] if len(local) > 2 else local[:1]) + "***"
+        return f"{masked_local}@{domain}"
+
+    def _record_auth_event(
+        self,
+        action: str,
+        *,
+        user=None,
+        email: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        reason: str | None = None,
+    ) -> None:
+        if self._audit is None:
+            return
+        organization_id = (
+            user.organization_id
+            if user is not None and user.organization_id
+            else SYSTEM_ORGANIZATION_ID
+        )
+        metadata = {
+            "email": self._mask_email(
+                email or (user.email if user is not None else None)
+            )
+        }
+        if reason:
+            metadata["reason"] = reason
+        try:
+            self._audit.record_event(
+                organization_id=organization_id,
+                user_id=user.id if user is not None else None,
+                action=action,
+                entity_type="auth",
+                metadata=metadata,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            self._audit.commit_pending()
+        except Exception:
+            # Auditoria nunca quebra o fluxo de auth (ex.: org-sistema nao semeada).
+            pass
+
     def register(
         self,
         *,
@@ -129,6 +181,8 @@ class AuthService:
         name: str,
         password: str,
         role: str = DEFAULT_SELF_REGISTRATION_ROLE,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> dict:
         self._ensure_local_auth_enabled()
         if role not in SELF_REGISTRATION_ROLES:
@@ -157,6 +211,14 @@ class AuthService:
         )
 
         self._send_verification_email(user, verification_token)
+
+        self._record_auth_event(
+            audit_actions.AUTH_USER_REGISTERED,
+            user=user,
+            email=email,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
 
         return {
             "user_id": str(user.id),
@@ -191,7 +253,14 @@ class AuthService:
             )
         )
 
-    def verify_email(self, *, email: str, token: str) -> dict:
+    def verify_email(
+        self,
+        *,
+        email: str,
+        token: str,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> dict:
         self._ensure_local_auth_enabled()
         if not token or len(token) < 8:
             raise InvalidVerificationTokenError("Token de verificação inválido.")
@@ -215,6 +284,14 @@ class AuthService:
         # (TENANT-01) ou vinculado por claim Cognito. Nenhum token e emitido.
         self._repository.mark_email_confirmed_pending_approval(user)
 
+        self._record_auth_event(
+            audit_actions.AUTH_EMAIL_VERIFIED,
+            user=user,
+            email=email,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
         return {
             "user_id": str(user.id),
             "email": user.email,
@@ -225,21 +302,59 @@ class AuthService:
             ),
         }
 
-    def login(self, *, email: str, password: str) -> dict:
+    def login(
+        self,
+        *,
+        email: str,
+        password: str,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> dict:
         self._ensure_local_auth_enabled()
         user = self._repository.get_by_email(email)
         if not user:
+            self._record_auth_event(
+                audit_actions.AUTH_LOGIN_FAILURE,
+                user=None,
+                email=email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                reason="unknown_email",
+            )
             raise InvalidCredentialsError("E-mail ou senha inválidos.")
 
         if user.status != "active" or not user.email_verified_at:
+            self._record_auth_event(
+                audit_actions.AUTH_LOGIN_FAILURE,
+                user=user,
+                email=email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                reason="not_verified",
+            )
             raise EmailNotVerifiedError(
                 "E-mail ainda não confirmado. Verifique sua caixa de entrada."
             )
 
         if not self._verify_password(password, user.password_hash or ""):
+            self._record_auth_event(
+                audit_actions.AUTH_LOGIN_FAILURE,
+                user=user,
+                email=email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                reason="bad_password",
+            )
             raise InvalidCredentialsError("E-mail ou senha inválidos.")
 
         access_token = self._issue_dev_jwt(user)
+        self._record_auth_event(
+            audit_actions.AUTH_LOGIN_SUCCESS,
+            user=user,
+            email=email,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
         return self._build_token_response(user, access_token)
 
     def _build_token_response(self, user: User, access_token: str) -> dict:
@@ -258,4 +373,7 @@ class AuthService:
 
 
 def get_auth_service(db) -> AuthService:
-    return AuthService(repository=UserRepository(db))
+    return AuthService(
+        repository=UserRepository(db),
+        audit=AuditLogService(db),
+    )

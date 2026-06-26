@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from src.core.security import AuthenticatedUser, get_current_user
@@ -49,6 +49,7 @@ def get_me(
 def register(
     payload: RegisterRequest,
     db: Annotated[Session, Depends(get_db)],
+    request: Request,
 ) -> dict[str, Any]:
     service = get_auth_service(db)
     try:
@@ -57,6 +58,8 @@ def register(
             name=payload.name,
             password=payload.password,
             role=payload.role,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
         )
         return success_response(result)
     except LocalAuthDisabledError as exc:
@@ -83,12 +86,15 @@ def register(
 def verify_email(
     payload: VerifyEmailRequest,
     db: Annotated[Session, Depends(get_db)],
+    request: Request,
 ) -> dict[str, Any]:
     service = get_auth_service(db)
     try:
         result = service.verify_email(
             email=str(payload.email),
             token=payload.token,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
         )
         return success_response(result)
     except LocalAuthDisabledError as exc:
@@ -115,12 +121,15 @@ def verify_email(
 def login(
     payload: LoginRequest,
     db: Annotated[Session, Depends(get_db)],
+    request: Request,
 ) -> dict[str, Any]:
     service = get_auth_service(db)
     try:
         result = service.login(
             email=str(payload.email),
             password=payload.password,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
         )
         return success_response(result)
     except LocalAuthDisabledError as exc:
