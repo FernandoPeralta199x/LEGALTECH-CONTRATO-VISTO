@@ -13,6 +13,9 @@ from src.modules.document_normalization.schemas import RequiresOcrError
 WORD_NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 WORD_TAG = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
+# DOC-03: limite de descompressao do document.xml - defesa contra zip-bomb.
+MAX_DOCX_XML_BYTES = 50 * 1024 * 1024
+
 
 class MarkdownConverter:
     def convert(
@@ -63,12 +66,22 @@ class MarkdownConverter:
     def _convert_docx(self, content: bytes) -> str:
         try:
             with ZipFile(BytesIO(content)) as archive:
-                document_xml = archive.read("word/document.xml")
+                declared_size = archive.getinfo("word/document.xml").file_size
+                with archive.open("word/document.xml") as entry:
+                    document_xml = entry.read(MAX_DOCX_XML_BYTES + 1)
         except (BadZipFile, KeyError) as exc:
             raise DocumentNormalizationError(
                 "Invalid DOCX file.",
                 error_code="invalid_docx",
             ) from exc
+
+        # DOC-03: rejeita zip-bomb (tamanho declarado no header OU bytes reais
+        # acima do limite; a leitura limitada protege contra header falsificado).
+        if declared_size > MAX_DOCX_XML_BYTES or len(document_xml) > MAX_DOCX_XML_BYTES:
+            raise DocumentNormalizationError(
+                "DOCX content exceeds the safe decompression limit.",
+                error_code="docx_too_large",
+            )
 
         root = ET.fromstring(document_xml)
         body = root.find("w:body", WORD_NS)

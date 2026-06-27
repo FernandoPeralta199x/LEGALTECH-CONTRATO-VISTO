@@ -109,6 +109,24 @@ class MarkdownConverterTest(unittest.TestCase):
         self.assertIn("| Campo | Valor |", result.markdown)
         self.assertIn("| Prazo | 12 meses |", result.markdown)
 
+    def test_convert_docx_rejects_decompression_bomb(self) -> None:
+        from unittest.mock import patch
+
+        from src.modules.document_normalization import converter as converter_module
+        from src.modules.document_normalization.converter import MarkdownConverter
+        from src.modules.document_normalization.schemas import DocumentNormalizationError
+
+        content = make_docx_bytes()
+        with patch.object(converter_module, "MAX_DOCX_XML_BYTES", 50):
+            with self.assertRaises(DocumentNormalizationError) as context:
+                MarkdownConverter().convert(
+                    filename="bomba.docx",
+                    content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    content=content,
+                )
+
+        self.assertEqual("docx_too_large", context.exception.error_code)
+
     def test_converts_textual_pdf_to_markdown_with_page_separator(self) -> None:
         from src.modules.document_normalization.converter import MarkdownConverter
 
