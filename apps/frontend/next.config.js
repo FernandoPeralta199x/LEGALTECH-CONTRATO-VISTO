@@ -13,6 +13,8 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // A-10: build standalone para imagem Docker minima (deploy ECS/Fargate).
+  output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
   async rewrites() {
