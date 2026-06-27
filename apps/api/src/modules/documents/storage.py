@@ -30,6 +30,51 @@ TOLERATED_GENERIC_CONTENT_TYPES = frozenset({"", DEFAULT_CONTENT_TYPE})
 LOCAL_STORAGE_BUCKET = "local-dev"
 READ_CHUNK_SIZE_BYTES = 1024 * 1024
 
+# DOC-01: assinaturas (magic bytes) por extensao  o conteudo real precisa bater
+# com o tipo declarado, defendendo contra extensao/content-type falsificados.
+MAGIC_SIGNATURES_BY_EXTENSION = {
+    ".pdf": (b"%PDF",),
+    ".png": (b"\x89PNG\r\n\x1a\n",),
+    ".jpg": (b"\xff\xd8\xff",),
+    ".jpeg": (b"\xff\xd8\xff",),
+    ".docx": (b"PK\x03\x04",),
+}
+TEXT_EXTENSIONS_WITHOUT_SIGNATURE = frozenset({".txt", ".md"})
+MAGIC_HEADER_READ_BYTES = 16
+
+
+def validate_upload_magic_bytes(filename: str, file_obj: BinaryIO) -> None:
+    """DOC-01: confirma que o conteudo real do upload bate com a extensao declarada."""
+    extension = Path(filename).suffix.lower()
+    try:
+        file_obj.seek(0)
+    except (OSError, ValueError, AttributeError):
+        pass
+    header = file_obj.read(MAGIC_HEADER_READ_BYTES) or b""
+    try:
+        file_obj.seek(0)
+    except (OSError, ValueError, AttributeError):
+        pass
+
+    signatures = MAGIC_SIGNATURES_BY_EXTENSION.get(extension)
+    if signatures is not None:
+        if not any(header.startswith(sig) for sig in signatures):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Uploaded file content does not match its extension "
+                    f"({extension}); it may be corrupted or disguised."
+                ),
+            )
+        return
+
+    if extension in TEXT_EXTENSIONS_WITHOUT_SIGNATURE and b"\x00" in header:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded text file contains binary content.",
+        )
+
+
 
 @dataclass(frozen=True)
 class StoredDocument:
@@ -124,6 +169,7 @@ class LocalDocumentStorage:
         safe_filename = self._safe_filename(filename)
         self._validate_extension(safe_filename)
         self._validate_content_type(safe_filename, content_type)
+        validate_upload_magic_bytes(safe_filename, file_obj)
 
         organization_path = str(organization_id)
         case_path = str(case_id)
@@ -342,6 +388,7 @@ class S3DocumentStorage:
         safe_filename = self._safe_filename(filename)
         self._validate_extension(safe_filename)
         self._validate_content_type(safe_filename, content_type)
+        validate_upload_magic_bytes(safe_filename, file_obj)
         storage_key = (
             f"organizations/{organization_id}/cases/{case_id}/documents/"
             f"{uuid4().hex}_{safe_filename}"

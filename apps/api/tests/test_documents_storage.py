@@ -19,7 +19,7 @@ class LocalDocumentStorageTest(unittest.TestCase):
             storage = LocalDocumentStorage(root_path=temp_dir, max_size_bytes=1024)
 
             result = storage.save_file(
-                file_obj=io.BytesIO(b"conteudo de teste"),
+                file_obj=io.BytesIO(b"%PDF-1.4 conteudo de teste"),
                 filename="Peticao Inicial.pdf",
                 content_type="application/pdf",
                 organization_id=organization_id,
@@ -28,10 +28,10 @@ class LocalDocumentStorageTest(unittest.TestCase):
 
             saved_path = Path(temp_dir) / result.storage_key
             self.assertTrue(saved_path.is_file())
-            self.assertEqual(b"conteudo de teste", saved_path.read_bytes())
+            self.assertEqual(b"%PDF-1.4 conteudo de teste", saved_path.read_bytes())
             self.assertEqual("local-dev", result.storage_bucket)
             self.assertEqual("application/pdf", result.content_type)
-            self.assertEqual(len(b"conteudo de teste"), result.size_bytes)
+            self.assertEqual(len(b"%PDF-1.4 conteudo de teste"), result.size_bytes)
             self.assertIn(str(organization_id), result.storage_key)
             self.assertIn(str(case_id), result.storage_key)
             self.assertTrue(result.filename.endswith(".pdf"))
@@ -61,7 +61,7 @@ class LocalDocumentStorageTest(unittest.TestCase):
             storage = LocalDocumentStorage(root_path=temp_dir, max_size_bytes=1024)
 
             result = storage.save_file(
-                file_obj=io.BytesIO(b"fake png bytes"),
+                file_obj=io.BytesIO(bytes.fromhex("89504e470d0a1a0a") + b"fake png bytes"),
                 filename="evidencia.png",
                 content_type="image/png",
                 organization_id=uuid4(),
@@ -89,6 +89,41 @@ class LocalDocumentStorageTest(unittest.TestCase):
 
             self.assertEqual(400, context.exception.status_code)
             self.assertFalse(any(path.is_file() for path in Path(temp_dir).rglob("*")))
+
+    def test_save_file_rejects_content_not_matching_declared_extension(self) -> None:
+        from src.modules.documents.storage import LocalDocumentStorage
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            storage = LocalDocumentStorage(root_path=temp_dir, max_size_bytes=1024)
+
+            with self.assertRaises(HTTPException) as context:
+                storage.save_file(
+                    file_obj=io.BytesIO(b"isto nao e um pdf de verdade"),
+                    filename="disfarcado.pdf",
+                    content_type="application/pdf",
+                    organization_id=uuid4(),
+                    case_id=uuid4(),
+                )
+
+            self.assertEqual(400, context.exception.status_code)
+            self.assertFalse(any(path.is_file() for path in Path(temp_dir).rglob("*")))
+
+    def test_save_file_rejects_binary_disguised_as_text(self) -> None:
+        from src.modules.documents.storage import LocalDocumentStorage
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            storage = LocalDocumentStorage(root_path=temp_dir, max_size_bytes=1024)
+
+            with self.assertRaises(HTTPException) as context:
+                storage.save_file(
+                    file_obj=io.BytesIO(bytes.fromhex("000102") + b" binario disfarcado"),
+                    filename="notas.txt",
+                    content_type="text/plain",
+                    organization_id=uuid4(),
+                    case_id=uuid4(),
+                )
+
+            self.assertEqual(400, context.exception.status_code)
 
     def test_save_file_rejects_files_above_max_size_and_removes_partial_file(self) -> None:
         from src.modules.documents.storage import LocalDocumentStorage
@@ -219,7 +254,7 @@ class S3DocumentStorageTest(unittest.TestCase):
         )
 
         result = storage.save_file(
-            file_obj=io.BytesIO(b"conteudo s3"),
+            file_obj=io.BytesIO(b"%PDF-1.4 conteudo s3"),
             filename="Contrato S3.pdf",
             content_type="application/pdf",
             organization_id=organization_id,
@@ -229,7 +264,7 @@ class S3DocumentStorageTest(unittest.TestCase):
         self.assertEqual("legaltech-documents-dev", result.storage_bucket)
         self.assertIn(f"organizations/{organization_id}", result.storage_key)
         self.assertIn(f"cases/{case_id}", result.storage_key)
-        self.assertEqual(b"conteudo s3", fake_client.uploads[0]["body"])
+        self.assertEqual(b"%PDF-1.4 conteudo s3", fake_client.uploads[0]["body"])
         self.assertEqual("application/pdf", fake_client.uploads[0]["extra_args"]["ContentType"])
         self.assertTrue(result.file_hash.startswith("sha256:"))
 
