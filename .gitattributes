@@ -1,2 +1,36 @@
-*.sh text eol=lf
+# Normaliza TODO arquivo de texto para LF no repositorio.
+# Resolve o ruido de CRLF no fluxo cross-platform Windows <-> Linux/mount.
+* text=auto eol=lf
+
+# Tipos de texto explicitos (defensivo / clareza de intencao)
+*.py       text eol=lf
+*.ts       text eol=lf
+*.tsx      text eol=lf
+*.js       text eol=lf
+*.mjs      text eol=lf
+*.json     text eol=lf
+*.css      text eol=lf
+*.html     text eol=lf
+*.md       text eol=lf
+*.sql      text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+*.ini      text eol=lf
+*.mako     text eol=lf
+*.sh       text eol=lf
+*.example  text eol=lf
 Dockerfile text eol=lf
+
+# Binarios — nunca normalizar (evita corrupcao)
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+*.zip   binary
