@@ -2,6 +2,7 @@ CLIENTS_CREATE = "clients.create"
 CLIENTS_UPDATE = "clients.update"
 CLIENTS_READ = "clients.read"
 CLIENTS_LIST = "clients.list"
+CLIENTS_ERASE = "clients.erase"
 
 CASES_CREATE = "cases.create"
 REQUEST_CREATED = "requests.create"

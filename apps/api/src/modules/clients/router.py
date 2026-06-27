@@ -218,3 +218,33 @@ def update_client(
     )
 
     return success_response(serialize_client(client), "Cliente atualizado com sucesso.")
+
+
+@router.post("/{client_id}/erase")
+def erase_client(
+    client_id: UUID,
+    request: Request,
+    service: Annotated[ClientService, Depends(get_client_service)],
+    audit_log: Annotated[AuditLogService, Depends(get_audit_log_service)],
+    tenant: Annotated[TenantContext, Depends(require_permission("clients:erase"))],
+) -> dict[str, object]:
+    """LGPD-02: anonimizacao irreversivel do PII do cliente (direito ao esquecimento)."""
+    client = service.erase_client(
+        organization_id=tenant.organization_id,
+        client_id=client_id,
+    )
+    audit_log.record_event(
+        organization_id=tenant.organization_id,
+        user_id=tenant.user_id,
+        action=actions.CLIENTS_ERASE,
+        entity_type="client",
+        entity_id=client.id,
+        metadata={"source": "api", "operation": "anonymize"},
+        ip_address=request_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return success_response(
+        {"id": str(client.id), "status": "anonymized"},
+        "Cliente anonimizado com sucesso.",
+    )

@@ -132,6 +132,10 @@ class FakeClientService:
             },
         )
 
+    def erase_client(self, **kwargs):
+        self.calls.append(("erase_client", kwargs))
+        return make_client(id=UUID(str(kwargs["client_id"])), name="[anonimizado]")
+
 
 class NotFoundClientService(FakeClientService):
     def get_client(self, **kwargs):
@@ -502,3 +506,62 @@ class CasesRoutesTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class _DenyPermissionService:
+    def has_permission(self, **kwargs) -> bool:
+        return False
+
+
+class ClientEraseRouteTest(unittest.TestCase):
+    def setUp(self) -> None:
+        from src.core.security import get_jwt_verifier
+        from src.modules.audit.service import get_audit_log_service
+        from src.modules.clients.router import get_client_service
+
+        self.service = FakeClientService()
+        self.app = create_app()
+        self.app.dependency_overrides[get_jwt_verifier] = lambda: FakeJwtVerifier()
+        self.app.dependency_overrides[get_client_service] = lambda: self.service
+        self.app.dependency_overrides[get_audit_log_service] = FakeAuditLogService
+        self.client = TestClient(self.app)
+
+    def tearDown(self) -> None:
+        self.app.dependency_overrides.clear()
+
+    def _allow(self) -> None:
+        from src.core.rbac import get_permission_service
+        self.app.dependency_overrides[get_permission_service] = (
+            lambda: FakePermissionService()
+        )
+
+    def _deny(self) -> None:
+        from src.core.rbac import get_permission_service
+        self.app.dependency_overrides[get_permission_service] = (
+            lambda: _DenyPermissionService()
+        )
+
+    def test_erase_client_anonymizes_and_returns_status(self) -> None:
+        self._allow()
+        client_id = uuid4()
+        response = self.client.post(
+            f"/api/v1/clients/{client_id}/erase",
+            headers=auth_headers(),
+        )
+
+        self.assertEqual(200, response.status_code)
+        body = response.json()
+        self.assertTrue(body["success"])
+        self.assertEqual("anonymized", body["data"]["status"])
+        self.assertEqual("erase_client", self.service.calls[0][0])
+        self.assertEqual(str(client_id), str(self.service.calls[0][1]["client_id"]))
+
+    def test_erase_client_requires_clients_erase_permission(self) -> None:
+        self._deny()
+        response = self.client.post(
+            f"/api/v1/clients/{uuid4()}/erase",
+            headers=auth_headers(),
+        )
+
+        self.assertEqual(403, response.status_code)
+        self.assertEqual([], self.service.calls)

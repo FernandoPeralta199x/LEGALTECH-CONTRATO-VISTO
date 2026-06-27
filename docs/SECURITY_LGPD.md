@@ -332,3 +332,39 @@ A regra principal é:
 ```text
 Nenhum dado sensível sem autenticação, autorização, tenant e auditoria.
 ```
+
+
+## 13. Retencao e anonimizacao (LGPD-02)
+
+### Prazos de retencao por categoria
+
+| Categoria de dado | Retencao | Base / observacao |
+|---|---|---|
+| Cadastro de cliente (nome, documento, e-mail, telefone) | Relacao ativa + 5 anos | Prescricao civil; depois, anonimizar |
+| Documentos de caso e evidencias | Duracao do caso + 5 anos | Defesa de direitos |
+| audit_log (eventos, sem PII bruta) | 5 anos | Trilha de auditoria |
+| Logs de aplicacao | 90 dias | Operacao; nunca conter PII |
+| Cache de consultas externas | 30 dias | Minimizacao |
+
+### Anonimizacao / direito ao esquecimento
+
+Quando o titular solicita exclusao, ou ao fim do prazo de retencao, o cliente e
+**anonimizado de forma irreversivel** (nao apagado fisicamente, para preservar
+integridade referencial e a trilha de auditoria):
+
+- name -> "[anonimizado]";
+- document (CPF/CNPJ), email, phone -> NULL;
+- metadata_json -> {} (remove PII de perfil);
+- deleted_at -> timestamp da anonimizacao.
+
+Procedimento operacional:
+
+1. Operador autorizado (papel **owner** ou **admin**, permissao clients:erase)
+   chama POST /api/v1/clients/{id}/erase.
+2. O backend valida tenant + RBAC, anonimiza e registra audit_log
+   (clients.erase)  **sem** PII no evento.
+3. Idempotente do ponto de vista do titular: cliente ja anonimizado deixa de ser
+   retornavel (filtro deleted_at).
+
+A anonimizacao roda no backend (fonte de verdade); o frontend nunca manipula PII
+bruta para esse fim.

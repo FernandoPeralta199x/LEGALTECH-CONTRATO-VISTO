@@ -3,6 +3,7 @@ from typing import Final
 
 CLIENTS_READ: Final = "clients:read"
 CLIENTS_WRITE: Final = "clients:write"
+CLIENTS_ERASE: Final = "clients:erase"
 CASES_READ: Final = "cases:read"
 CASES_WRITE: Final = "cases:write"
 CASES_SUBMIT: Final = "cases:submit"
@@ -45,6 +46,7 @@ ALL_BASE_PERMISSIONS: Final[frozenset[str]] = frozenset(
     {
         CLIENTS_READ,
         CLIENTS_WRITE,
+        CLIENTS_ERASE,
         CASES_READ,
         CASES_WRITE,
         CASES_SUBMIT,
@@ -91,6 +93,7 @@ BASE_ROLE_PERMISSIONS: Final[dict[str, frozenset[str]]] = {
         {
             CLIENTS_READ,
             CLIENTS_WRITE,
+            CLIENTS_ERASE,
             CASES_READ,
             CASES_WRITE,
             CASES_SUBMIT,

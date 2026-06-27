@@ -132,6 +132,8 @@ class ClientRepositoryProtocol(Protocol):
 
     def update_client(self, client: Client, values: dict) -> Client: ...
 
+    def anonymize_client(self, client: Client) -> Client: ...
+
 
 class ClientService:
     def __init__(
@@ -232,3 +234,16 @@ class ClientService:
                 values["document"] = document
 
         return self.repository.update_client(client, values)
+
+    def erase_client(
+        self,
+        *,
+        organization_id: UUID | str,
+        client_id: UUID | str,
+    ) -> Client:
+        """LGPD-02: anonimiza (direito ao esquecimento) um cliente existente."""
+        client = self.get_client(
+            organization_id=organization_id,
+            client_id=client_id,
+        )
+        return self.repository.anonymize_client(client)

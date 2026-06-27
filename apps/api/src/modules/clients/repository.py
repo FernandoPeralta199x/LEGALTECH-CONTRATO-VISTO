@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import or_, select
@@ -65,6 +66,20 @@ class ClientRepository:
     def update_client(self, client: Client, values: dict) -> Client:
         for field, value in values.items():
             setattr(client, field, value)
+
+        self.db.flush()
+        self.db.refresh(client)
+        return client
+
+    def anonymize_client(self, client: Client) -> Client:
+        """LGPD-02: apaga o PII do cliente mantendo a linha (auditoria/integridade)."""
+        client.name = "[anonimizado]"
+        client.document = None
+        client.email = None
+        client.phone = None
+        client.metadata_json = {}
+        if client.deleted_at is None:
+            client.deleted_at = datetime.now(UTC)
 
         self.db.flush()
         self.db.refresh(client)
