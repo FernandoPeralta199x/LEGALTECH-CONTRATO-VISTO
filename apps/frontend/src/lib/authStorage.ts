@@ -63,6 +63,12 @@ function notifySessionChanged(): void {
 }
 
 export function saveStoredSession(session: DevSession): void {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "[authStorage] Persistir sessao/token em localStorage nao e permitido em producao. Use Cognito + cookie HttpOnly."
+    );
+  }
+
   const storage = getBrowserStorage();
   if (!storage) {
     return;
