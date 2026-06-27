@@ -10,6 +10,7 @@ import {
   type StoredSessionInvalidReason
 } from "./authStorage";
 import type { DevSession } from "../types/auth";
+import { isProduction } from "./runtimeEnv";
 
 export type DevSessionStatus =
   | "authenticated"
@@ -67,7 +68,7 @@ function subscribe(listener: () => void): () => void {
 }
 
 function getSnapshot(): string {
-  if (process.env.NODE_ENV === "production") {
+  if (isProduction()) {
     throw new Error(
       "[useDevSession] localStorage session is not allowed in production. Use Cognito/httpOnly cookies."
     );

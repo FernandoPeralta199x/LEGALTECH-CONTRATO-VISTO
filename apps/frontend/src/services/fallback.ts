@@ -1,3 +1,4 @@
+import { isProduction } from "../lib/runtimeEnv";
 import { ApiNetworkError } from "./apiClient";
 
 export type DataSource = "api" | "mock";
@@ -9,7 +10,7 @@ export type ServiceResult<T> = {
 };
 
 export function isMockFallbackEnabled(): boolean {
-  if (process.env.NODE_ENV === "production") return false;
+  if (isProduction()) return false;
   return process.env.NEXT_PUBLIC_ENABLE_API_MOCK_FALLBACK === "true";
 }
 

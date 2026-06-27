@@ -1,5 +1,6 @@
 import { MODULOS, PRODUTOS, type Modulo } from "../../lib/produtoConfig";
 import type { Case, CaseParty, CaseStatus, Priority, ProductType } from "../../types";
+import { assertBrowserPersistDisallowedInProduction } from "./runtimeEnv";
 
 export const LOCAL_CASES_STORAGE_KEY = "legaltech.local.cases.v1";
 
@@ -162,6 +163,8 @@ export function getStoredLocalCases(): Case[] {
 }
 
 export function saveStoredLocalCase(legalCase: Case): Case {
+  assertBrowserPersistDisallowedInProduction("localCases");
+
   const storage = getLocalStorage();
   if (!storage) return legalCase;
 

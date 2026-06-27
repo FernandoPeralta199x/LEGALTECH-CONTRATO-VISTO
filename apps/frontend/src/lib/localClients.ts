@@ -1,6 +1,7 @@
 import type { Client, ClientCreate, ClientUpdate } from "../../types";
 
 import { maskDocumentForDisplay } from "./clientForm";
+import { assertBrowserPersistDisallowedInProduction } from "./runtimeEnv";
 
 export const LOCAL_CLIENTS_STORAGE_KEY = "legaltech.local.clients.v1";
 
@@ -225,6 +226,8 @@ function redactEmail(email: string): string {
 }
 
 export function saveStoredLocalClient(client: Client): Client {
+  assertBrowserPersistDisallowedInProduction("localClients");
+
   const storage = getLocalStorage();
   if (!storage) return client;
 

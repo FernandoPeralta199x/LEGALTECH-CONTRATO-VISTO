@@ -2,6 +2,7 @@ import type { DevSession } from "../types/auth";
 import { DEV_ROLES } from "../types/auth";
 import { LOCAL_CASES_STORAGE_KEY } from "./localCases";
 import { LOCAL_CLIENTS_STORAGE_KEY } from "./localClients";
+import { assertBrowserPersistDisallowedInProduction } from "./runtimeEnv";
 
 export const AUTH_STORAGE_KEY = "legaltech.dev.session.v1";
 export const AUTH_SESSION_CHANGED_EVENT = "legaltech-dev-session-changed";
@@ -63,11 +64,7 @@ function notifySessionChanged(): void {
 }
 
 export function saveStoredSession(session: DevSession): void {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "[authStorage] Persistir sessao/token em localStorage nao e permitido em producao. Use Cognito + cookie HttpOnly."
-    );
-  }
+  assertBrowserPersistDisallowedInProduction("authStorage");
 
   const storage = getBrowserStorage();
   if (!storage) {
