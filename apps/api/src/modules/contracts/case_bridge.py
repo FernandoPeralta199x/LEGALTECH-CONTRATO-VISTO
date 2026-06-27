@@ -95,8 +95,9 @@ class OperationalCaseRepository:
 
         case_schema = self._to_schema(case)
 
-        # Caminho F: compoe o agregado a partir dos repos DB-backed num store
-        # temporario, reusando a derivacao de progresso/summary do MockCaseRepository.
+        # Caminho F: agregado montado direto dos repos DB-backed (PostgreSQL e a
+        # fonte de verdade) via funcao pura de composicao  sem store em memoria.
+        from src.modules.contracts.aggregate import build_case_aggregate
         from src.modules.contracts.db_repositories import (
             SqlDocumentRepository,
             SqlPartyRepository,
@@ -105,38 +106,24 @@ class OperationalCaseRepository:
             SqlTimelineRepository,
             SqlTriageRepository,
         )
-        from src.modules.contracts.mock_repositories import (
-            InMemoryOperationalStore,
-            MockCaseRepository,
-        )
         from src.modules.requests.repository import RequestRepository
 
         scope = {"organization_id": organization_id, "case_id": case_id}
-        tmp = InMemoryOperationalStore()
-        tmp.cases[case_schema.id] = case_schema
+        request_schema = None
         if case_schema.request_id is not None:
             request_schema = RequestRepository(self._db).get(
                 organization_id=organization_id,
                 request_id=case_schema.request_id,
             )
-            if request_schema is not None:
-                tmp.requests[request_schema.id] = request_schema
-        for party in SqlPartyRepository(self._db).list_by_case(**scope):
-            tmp.parties[party.id] = party
-        for document in SqlDocumentRepository(self._db).list_by_case(**scope):
-            tmp.documents[document.id] = document
-        for event in SqlTimelineRepository(self._db).list_by_case(**scope):
-            tmp.timeline_events[event.id] = event
-        for module in SqlTriageRepository(self._db).list_modules(**scope):
-            tmp.triage_modules[module.id] = module
-        for result in SqlProviderResultRepository(self._db).list_by_case(**scope):
-            tmp.provider_results[result.id] = result
-        report = SqlReportRepository(self._db).get_current(**scope)
-        if report is not None:
-            tmp.reports[report.id] = report
-        return MockCaseRepository(tmp).get_aggregate(
-            organization_id=organization_id,
-            case_id=case_id,
+        return build_case_aggregate(
+            case=case_schema,
+            request=request_schema,
+            parties=SqlPartyRepository(self._db).list_by_case(**scope),
+            documents=SqlDocumentRepository(self._db).list_by_case(**scope),
+            timeline=SqlTimelineRepository(self._db).list_by_case(**scope),
+            triage_modules=SqlTriageRepository(self._db).list_modules(**scope),
+            provider_results=SqlProviderResultRepository(self._db).list_by_case(**scope),
+            report=SqlReportRepository(self._db).get_current(**scope),
         )
     def list(
         self,
