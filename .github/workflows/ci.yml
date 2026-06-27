@@ -82,3 +82,12 @@ jobs:
       # Valida que o Dockerfile de producao (DEPLOY-01) builda. Push para ECR fica na FASE 8.
       - name: Build API image
         run: docker build -t legaltech-api:ci apps/api
+
+  frontend-image:
+    name: Frontend image (build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Valida que o Dockerfile standalone do frontend (A-10) builda. Push para ECR fica na FASE 8.
+      - name: Build frontend image
+        run: docker build -t legaltech-frontend:ci apps/frontend
